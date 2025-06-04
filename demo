@@ -1,0 +1,136 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Grid,
+  Container,
+  CircularProgress,
+  Paper,
+  Button,
+} from '@mui/material';
+import RoomCard from '../components/RoomCard';
+import Calendar from '../components/Calendar';
+import api from '../components/api';
+
+function LoadingSpinner() {
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      height="100vh"
+    >
+      <CircularProgress />
+    </Box>
+  );
+}
+
+const CalendarPage = () => {
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [rooms, setRooms] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await api.get('/rooms/');
+        const rooms = await response.data.rooms;
+        setRooms(rooms);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching rooms:', err);
+        setError("You don't have permission to view this. For more information, Contact Devops Team");
+        setIsLoading(false);
+      }
+    };
+    fetchRooms();
+  }, []);
+
+  const handleRoomSelect = (room) => {
+    setSelectedRoom(room);
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+  if (error) {
+    return (
+      <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
+        <Typography color="error" gutterBottom>{error}</Typography>
+        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+          Retry
+        </Button>
+      </Paper>
+    );
+  }
+  return (
+    <Container
+      maxWidth="xl"
+      sx={{
+        height: 'calc(100vh - 48px)',
+        overflow: 'hidden',
+        mb: 6
+      }}
+    >
+      <Box
+        sx={{
+          py: 4,
+          height: '100%',
+          overflow: 'auto',
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          },
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%'  
+        }}>
+          <Typography
+            variant="body1"
+            gutterBottom
+            sx={{
+              fontSize: '1.8rem',
+              fontWeight: 'bold',
+              mb: 3
+            }}
+          >
+            {selectedRoom
+              ? `${selectedRoom.displayName}`
+              : 'Select a Room'
+            }
+          </Typography>
+        </Box>
+
+        {!selectedRoom && (
+          <Grid container spacing={3}>
+            {rooms.map(room => (
+              <RoomCard
+                key={room.id}
+                room={room}
+                onClick={handleRoomSelect}
+                variant="calendar"
+              />
+            ))}
+          </Grid>
+        )}
+
+        {selectedRoom && (
+          <Box>
+            <Calendar
+              initialRoom={selectedRoom}
+              onBack={() => setSelectedRoom(null)}
+            />
+          </Box>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
+export default CalendarPage;
