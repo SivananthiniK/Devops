@@ -1,25 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Typography,
-  Grid,
-  Container,
-  CircularProgress,
-  Paper,
-  Button,
+  Box, Typography, Grid, Container,
+  CircularProgress, Paper, Button
 } from '@mui/material';
 import RoomCard from '../components/RoomCard';
 import Calendar from '../components/Calendar';
 import api from '../components/api';
+import BookingModal from '../components/BookingModal';
 
 function LoadingSpinner() {
   return (
-    <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      height="100vh"
-    >
+    <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
       <CircularProgress />
     </Box>
   );
@@ -27,20 +18,22 @@ function LoadingSpinner() {
 
 const CalendarPage = () => {
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [rooms, setRooms] = useState(null);
+  const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [modalOpen, setModalOpen] = useState(false); // NEW
+  const [bookingRoom, setBookingRoom] = useState(null); // NEW
 
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         const response = await api.get('/rooms/');
-        const rooms = await response.data.rooms;
-        setRooms(rooms);
+        setRooms(response.data); // assuming direct list response
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching rooms:', err);
-        setError("You don't have permission to view this. For more information, Contact Devops Team");
+        setError("You don't have permission to view this. Contact DevOps Team.");
         setIsLoading(false);
       }
     };
@@ -51,9 +44,24 @@ const CalendarPage = () => {
     setSelectedRoom(room);
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  const handleBookClick = (room) => {
+    setBookingRoom(room);
+    setModalOpen(true);
+  };
+
+  const handleReservation = async (roomId, formData) => {
+    try {
+      await api.patch(`/rooms/${roomId}/`, formData);
+      // Refresh rooms after booking
+      const res = await api.get('/rooms/');
+      setRooms(res.data);
+    } catch (err) {
+      console.error("Reservation failed:", err);
+    }
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
   if (error) {
     return (
       <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
@@ -64,71 +72,57 @@ const CalendarPage = () => {
       </Paper>
     );
   }
+
   return (
-    <Container
-      maxWidth="xl"
-      sx={{
-        height: 'calc(100vh - 48px)',
-        overflow: 'hidden',
-        mb: 6
-      }}
-    >
-      <Box
-        sx={{
-          py: 4,
-          height: '100%',
-          overflow: 'auto',
-          '&::-webkit-scrollbar': {
-            display: 'none'
-          },
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}
-      >
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%'  
-        }}>
+    <Container maxWidth="xl" sx={{ height: 'calc(100vh - 48px)', overflow: 'hidden', mb: 6 }}>
+      <Box sx={{
+        py: 4,
+        height: '100%',
+        overflow: 'auto',
+        '&::-webkit-scrollbar': { display: 'none' },
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
           <Typography
             variant="body1"
             gutterBottom
-            sx={{
-              fontSize: '1.8rem',
-              fontWeight: 'bold',
-              mb: 3
-            }}
+            sx={{ fontSize: '1.8rem', fontWeight: 'bold', mb: 3 }}
           >
-            {selectedRoom
-              ? `${selectedRoom.displayName}`
-              : 'Select a Room'
-            }
+            {selectedRoom ? `${selectedRoom.name}` : 'Select a Room'}
           </Typography>
         </Box>
 
         {!selectedRoom && (
           <Grid container spacing={3}>
             {rooms.map(room => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onClick={handleRoomSelect}
-                variant="calendar"
-              />
+              <Grid item key={room.id}>
+                <RoomCard
+                  room={room}
+                  onClick={() => handleBookClick(room)}
+                  variant="calendar"
+                />
+              </Grid>
             ))}
           </Grid>
         )}
 
         {selectedRoom && (
           <Box>
-            <Calendar
-              initialRoom={selectedRoom}
-              onBack={() => setSelectedRoom(null)}
-            />
+            <Calendar initialRoom={selectedRoom} onBack={() => setSelectedRoom(null)} />
           </Box>
         )}
       </Box>
+
+      {/* Booking Modal */}
+      {bookingRoom && (
+        <BookingModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          room={bookingRoom}
+          onSubmit={handleReservation}
+        />
+      )}
     </Container>
   );
 };
