@@ -1,12 +1,219 @@
+import React from 'react';
+import {
+  Card,
+  CardContent,
+  Stack,
+  Chip,
+  Typography,
+  Box,
+  Tooltip,
+  Grid
+} from '@mui/material';
+import {
+  People as PeopleIcon,
+  DisplaySettings as DisplayIcon,
+  Videocam as VideoIcon,
+  Mic as AudioIcon,
+  Tag as TagIcon,
+  Schedule as ScheduleIcon,
+  LocationOn as LocationIcon
+} from '@mui/icons-material';
+import ScheduleTooltip from './ScheduleToolTip';
+
+const RoomCard = ({
+  room,
+  onClick,
+  isAvailable = true,
+  variant = 'default'
+}) => {
+  const colorSchemes = {
+    default: {
+      background: '#e3f2fd',
+      backgroundHover: 'rgba(30, 136, 229, 0.08)',
+      borderColor: 'rgba(30, 136, 229, 0.2)'
+    },
+    schedule: {
+      background: '#e8f5e9',
+      backgroundHover: 'rgba(46, 125, 50, 0.08)',
+      borderColor: 'rgba(46, 125, 50, 0.2)'
+    },
+    calendar: {
+      background: '#f3e5f5', // Light purple
+      backgroundHover: 'rgba(156, 39, 176, 0.08)',
+      borderColor: 'rgba(156, 39, 176, 0.2)'
+    }
+  };
+
+  const currentColorScheme = colorSchemes[variant] || colorSchemes.default;
+
+  const cardContent = (
+    <Card
+      sx={{
+        width: '300px',
+        height: '250px',
+        cursor: onClick ? 'pointer' : 'default',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        border: `1px solid ${currentColorScheme.borderColor}`,
+        borderRadius: '15px',
+        backgroundColor: !isAvailable && variant === 'schedule' ? 'rgba(198, 40, 40, 0.08)' : currentColorScheme.background,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-5px)',
+          boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+        },
+      }}
+      onClick={() => onClick && onClick(room)}
+    >
+      <CardContent sx={{ padding: 4 }}>
+        <Typography variant="h5" component="div" sx={{ mb: 2, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+          {room.displayName}
+          {!isAvailable && variant === 'schedule' && (
+            <Chip
+              icon={<ScheduleIcon fontSize="small" />}
+              label="Booked"
+              size="small"
+              sx={{
+                ml: 'auto',
+                backgroundColor: 'rgba(240, 85, 85, 0.08)',
+                color: '#dc2626',
+                '& .MuiChip-icon': {
+                  color: '#dc2626'
+                }
+              }}
+            />
+          )}
+        </Typography>
+
+        <Stack spacing={1.5}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <PeopleIcon color="action" fontSize="small" />
+            <Typography variant="body2" color="text.secondary">
+              {room.capacity ? room.capacity : 0}
+            </Typography>
+          </Box>
+
+          {(room.address || room.location) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LocationIcon color="action" fontSize="small" />
+              <Typography variant="body2" color="text.secondary">
+                {room.address?.city || room.location}
+              </Typography>
+            </Box>
+          )}
+
+
+          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
+            {room.audioDeviceName && (
+              <Chip
+                icon={<AudioIcon fontSize="small" />}
+                label={room.audioDeviceName}
+                size="small"
+                sx={{
+                  backgroundColor: currentColorScheme.backgroundHover,
+                  '& .MuiChip-icon': {
+                    color: 'text.secondary'
+                  }
+                }}
+              />
+            )}
+            {room.videoDeviceName && (
+              <Chip
+                icon={<VideoIcon fontSize="small" />}
+                label={room.videoDeviceName}
+                size="small"
+                sx={{
+                  backgroundColor: currentColorScheme.backgroundHover,
+                  '& .MuiChip-icon': {
+                    color: 'text.secondary'
+                  }
+                }}
+              />
+            )}
+            {room.displayDeviceName && (
+              <Chip
+                icon={<DisplayIcon fontSize="small" />}
+                label={room.displayDeviceName}
+                size="small"
+                sx={{
+                  backgroundColor: currentColorScheme.backgroundHover,
+                  '& .MuiChip-icon': {
+                    color: 'text.secondary'
+                  }
+                }}
+              />
+            )}
+          </Stack>
+
+          {room.tags && room.tags.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+              {room.tags.map((tag, index) => (
+                <Chip
+                  key={index}
+                  icon={<TagIcon fontSize="small" />}
+                  label={tag}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    fontSize: '0.75rem'
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <Grid item xs={12} sm={6} md={4} lg={3}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        {!isAvailable && room.schedule && variant === 'schedule' ? (
+          <Tooltip
+            title={<ScheduleTooltip schedule={room.schedule.value[0].scheduleItems} />}
+            placement="right"
+            arrow
+            PopperProps={{
+              sx: {
+                '& .MuiTooltip-tooltip': {
+                  backgroundColor: 'white',
+                  color: 'inherit',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                  p: 0
+                }
+              }
+            }}
+          >
+            {cardContent}
+          </Tooltip>
+        ) : (
+          cardContent
+        )}
+      </Box>
+    </Grid>
+  );
+};
+
+export default RoomCard;
+
+
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Grid, Container,
-  CircularProgress, Paper, Button
+  Box, Typography, Container, CircularProgress, Paper, Button,
+  Dialog, DialogTitle, DialogContent, Grid, DialogActions,
+  TextField, Checkbox, FormControlLabel
 } from '@mui/material';
 import RoomCard from '../components/RoomCard';
 import Calendar from '../components/Calendar';
-import api from '../components/api';
-import BookingModal from '../components/BookingModal';
+import axios from 'axios';
+import { bgcolor, color } from '@mui/system';
 
 function LoadingSpinner() {
   return (
@@ -16,113 +223,113 @@ function LoadingSpinner() {
   );
 }
 
-const CalendarPage = () => {
+const CalendarPage = ({ idToken }) => {
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [rooms, setRooms] = useState([]);
+  const [rooms, setRooms] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const [modalOpen, setModalOpen] = useState(false); // NEW
-  const [bookingRoom, setBookingRoom] = useState(null); // NEW
+  const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
+  const [fromTime, setFromTime] = useState(null);
+  const [toTime, setToTime] = useState(null);
+  const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const response = await api.get('/rooms/');
-        setRooms(response.data); // assuming direct list response
+    const fetchRooms = () => {
+      axios.get(`${process.env.REACT_APP_BACKEND_URL}/rooms/`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: 'Bearer ' + idToken,
+          token: 'Bearer ' + localStorage.getItem('jwtToken')
+        }
+      })
+      .then(response => {
+        setRooms(response.data.rooms);
         setIsLoading(false);
-      } catch (err) {
+      })
+      .catch(err => {
         console.error('Error fetching rooms:', err);
-        setError("You don't have permission to view this. Contact DevOps Team.");
+        setError("You don't have permission to view this. For more information, Contact Devops Team");
         setIsLoading(false);
-      }
+      });
     };
     fetchRooms();
-  }, []);
+  }, [idToken]);
 
-  const handleRoomSelect = (room) => {
-    setSelectedRoom(room);
-  };
+  const handleRoomSelect = (room) => setSelectedRoom(room);
 
-  const handleBookClick = (room) => {
-    setBookingRoom(room);
-    setModalOpen(true);
-  };
-
-  const handleReservation = async (roomId, formData) => {
-    try {
-      await api.patch(`/rooms/${roomId}/`, formData);
-      // Refresh rooms after booking
-      const res = await api.get('/rooms/');
-      setRooms(res.data);
-    } catch (err) {
-      console.error("Reservation failed:", err);
+  const handleReserveSubmit = () => {
+    if (!confirm) {
+      alert('Please confirm your reservation.');
+      return;
     }
+    const payload = { roomId: selectedRoom.id, fromDate, toDate, fromTime, toTime };
+    axios.post(`${process.env.REACT_APP_BACKEND_URL}/rooms/reserve`, payload, {
+      headers: {
+        Authorization: 'Bearer ' + idToken,
+        token: 'Bearer ' + localStorage.getItem('jwtToken')
+      }
+    }).then(() => {
+      alert("Room reserved successfully.");
+      setReserveDialogOpen(false);
+      setSelectedRoom(null);
+      window.location.reload();
+    }).catch(err => {
+      console.error("Reservation failed:", err);
+      alert("Failed to reserve the room.");
+    });
   };
 
   if (isLoading) return <LoadingSpinner />;
-
   if (error) {
     return (
       <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
         <Typography color="error" gutterBottom>{error}</Typography>
-        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-          Retry
-        </Button>
+        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>Retry</Button>
       </Paper>
     );
   }
 
   return (
     <Container maxWidth="xl" sx={{ height: 'calc(100vh - 48px)', overflow: 'hidden', mb: 6 }}>
-      <Box sx={{
-        py: 4,
-        height: '100%',
-        overflow: 'auto',
-        '&::-webkit-scrollbar': { display: 'none' },
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none'
-      }}>
+      <Box sx={{ py: 4, height: '100%', overflow: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-          <Typography
-            variant="body1"
-            gutterBottom
-            sx={{ fontSize: '1.8rem', fontWeight: 'bold', mb: 3 }}
-          >
-            {selectedRoom ? `${selectedRoom.name}` : 'Select a Room'}
+          <Typography variant="body1" gutterBottom sx={{ fontSize: '1.8rem', fontWeight: 'bold', mb: 3 }}>
+            {selectedRoom ? selectedRoom.displayName : 'Select a Room'}
           </Typography>
         </Box>
-
-        {!selectedRoom && (
+        {!selectedRoom ? (
           <Grid container spacing={3}>
             {rooms.map(room => (
-              <Grid item key={room.id}>
-                <RoomCard
-                  room={room}
-                  onClick={() => handleBookClick(room)}
-                  variant="calendar"
-                />
-              </Grid>
+              <RoomCard key={room.id} room={room} onClick={handleRoomSelect} variant="calendar" />
             ))}
           </Grid>
-        )}
-
-        {selectedRoom && (
+        ) : (
           <Box>
-            <Calendar initialRoom={selectedRoom} onBack={() => setSelectedRoom(null)} />
+            <Box display="flex" justifyContent="flex-end" mb={2}>
+              <Button variant="contained" onClick={() => setReserveDialogOpen(true)}>Reserve</Button>
+            </Box>
+            <Calendar initialRoom={selectedRoom} onBack={() => setSelectedRoom(null)} idToken={idToken} />
           </Box>
         )}
       </Box>
 
-      {/* Booking Modal */}
-      {bookingRoom && (
-        <BookingModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          room={bookingRoom}
-          onSubmit={handleReservation}
-        />
-      )}
+      <Dialog open={reserveDialogOpen} onClose={() => setReserveDialogOpen(false)}>
+      <DialogTitle >Reserve Room</DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 , mt : 0}}>
+          <br></br>
+          <TextField type="date" label="From Date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField type="date" label="To Date" value={toDate} onChange={(e) => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField type="time" label="From Time" value={fromTime} onChange={(e) => setFromTime(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField type="time" label="To Time" value={toTime} onChange={(e) => setToTime(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <FormControlLabel control={<Checkbox checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />} label="Confirm Reservation" />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReserveDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleReserveSubmit} variant="contained" disabled={!confirm}>Submit</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
