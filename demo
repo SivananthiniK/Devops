@@ -1,213 +1,268 @@
-// RoomCard.js
-import React from 'react';
-import {
-  Card, CardContent, Stack, Chip, Typography, Box, Tooltip, Grid
-} from '@mui/material';
-import {
-  People as PeopleIcon,
-  DisplaySettings as DisplayIcon,
-  Videocam as VideoIcon,
-  Mic as AudioIcon,
-  Tag as TagIcon,
-  Schedule as ScheduleIcon,
-  LocationOn as LocationIcon
-} from '@mui/icons-material';
-import ScheduleTooltip from './ScheduleToolTip';
-
-const RoomCard = ({ room, onClick, isAvailable = true, variant = 'default' }) => {
-  const colorSchemes = {
-    default: {
-      background: '#e3f2fd',
-      backgroundHover: 'rgba(30, 136, 229, 0.08)',
-      borderColor: 'rgba(30, 136, 229, 0.2)'
-    },
-    schedule: {
-      background: '#e8f5e9',
-      backgroundHover: 'rgba(46, 125, 50, 0.08)',
-      borderColor: 'rgba(46, 125, 50, 0.2)'
-    },
-    calendar: {
-      background: '#f3e5f5',
-      backgroundHover: 'rgba(156, 39, 176, 0.08)',
-      borderColor: 'rgba(156, 39, 176, 0.2)'
-    }
-  };
-
-  const currentColorScheme = colorSchemes[variant] || colorSchemes.default;
-
-  const cardContent = (
-    <Card
-      sx={{
-        width: '300px',
-        height: '250px',
-        cursor: onClick ? 'pointer' : 'default',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        border: `1px solid ${currentColorScheme.borderColor}`,
-        borderRadius: '15px',
-        backgroundColor: !isAvailable && variant === 'schedule' ? 'rgba(198, 40, 40, 0.08)' : currentColorScheme.background,
-        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-        transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
-        '&:hover': {
-          transform: 'translateY(-5px)',
-          boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
-        },
-      }}
-      onClick={() => onClick && onClick(room)}
-    >
-      <CardContent sx={{ padding: 4 }}>
-        <Typography variant="h5" component="div" sx={{ mb: 2, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          {room.displayName}
-          {!isAvailable && variant === 'schedule' && (
-            <Chip
-              icon={<ScheduleIcon fontSize="small" />}
-              label="Booked"
-              size="small"
-              sx={{
-                ml: 'auto',
-                backgroundColor: 'rgba(240, 85, 85, 0.08)',
-                color: '#dc2626',
-                '& .MuiChip-icon': {
-                  color: '#dc2626'
-                }
-              }}
-            />
-          )}
-          {room.is_bookable === false && (
-            <Chip
-              label="Blocked by Admin"
-              size="small"
-              color="warning"
-              sx={{ ml: 'auto', backgroundColor: '#ffe0b2', color: '#ef6c00' }}
-            />
-          )}
-        </Typography>
-
-        <Stack spacing={1.5}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <PeopleIcon color="action" fontSize="small" />
-            <Typography variant="body2" color="text.secondary">
-              {room.capacity ? room.capacity : 0}
-            </Typography>
-          </Box>
-
-          {(room.address || room.location) && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LocationIcon color="action" fontSize="small" />
-              <Typography variant="body2" color="text.secondary">
-                {room.address?.city || room.location}
-              </Typography>
-            </Box>
-          )}
-
-          <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
-            {room.audioDeviceName && (
-              <Chip
-                icon={<AudioIcon fontSize="small" />}
-                label={room.audioDeviceName}
-                size="small"
-                sx={{
-                  backgroundColor: currentColorScheme.backgroundHover
-                }}
-              />
-            )}
-            {room.videoDeviceName && (
-              <Chip
-                icon={<VideoIcon fontSize="small" />}
-                label={room.videoDeviceName}
-                size="small"
-                sx={{ backgroundColor: currentColorScheme.backgroundHover }}
-              />
-            )}
-            {room.displayDeviceName && (
-              <Chip
-                icon={<DisplayIcon fontSize="small" />}
-                label={room.displayDeviceName}
-                size="small"
-                sx={{ backgroundColor: currentColorScheme.backgroundHover }}
-              />
-            )}
-          </Stack>
-
-          {room.tags && room.tags.length > 0 && (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-              {room.tags.map((tag, index) => (
-                <Chip
-                  key={index}
-                  icon={<TagIcon fontSize="small" />}
-                  label={tag}
-                  size="small"
-                  sx={{
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                    fontSize: '0.75rem'
-                  }}
-                />
-              ))}
-            </Box>
-          )}
-        </Stack>
-      </CardContent>
-    </Card>
-  );
-
-  return (
-    <Grid item xs={12} sm={6} md={4} lg={3}>
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        {!isAvailable && room.schedule && variant === 'schedule' ? (
-          <Tooltip
-            title={<ScheduleTooltip schedule={room.schedule.value[0].scheduleItems} />}
-            placement="right"
-            arrow
-            PopperProps={{
-              sx: {
-                '& .MuiTooltip-tooltip': {
-                  backgroundColor: 'white',
-                  color: 'inherit',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                  p: 0
-                }
-              }
-            }}
-          >
-            {cardContent}
-          </Tooltip>
-        ) : (
-          cardContent
-        )}
-      </Box>
-    </Grid>
-  );
-};
-
-export default RoomCard;
+updater.yml
 
 
-// CalendarPage.js (updates only shown)
-// Inside the return block:
-{selectedRoom && selectedRoom.is_bookable === false && (
-  <Typography color="warning.main" sx={{ fontWeight: 'bold', mb: 2 }}>
-    ⚠️ This room is currently blocked by admin and cannot be reserved.
-  </Typography>
-)}
+- name: deploy status app service
+  hosts: all
+  become: true
+  become_user: root
+  become_method: sudo
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Updating docker-compose.yml
+      copy:
+        src: ../docker-compose.yml  
+        dest: "{{ appdir | default('/opt/app') }}"
+    
+    - name: Create credentials directory if it doesn't exist
+      ansible.builtin.file:
+        path: "{{ CREDENTIAL_DIR }}"
+        state: directory
+    
+    - name: Copy Token content to file
+      ansible.builtin.copy:
+        src: "{{ TOKENS }}"
+        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
+    
+    -name: Copy variables to env file
+      ansible.builtin.template:
+        src: "templates/envfile.env.j2"
+        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
+ 
+    - name: Updating container
+      no_log: true
+      ignore_errors: true
+      shell:
+        cmd: |
+          message() {
+            echo -e "$(date +'%Y-%m-%d %H:%M:%S') $HOSTNAME:$1"
+          }
 
-// Modify Reserve button:
-<Button
-  variant="contained"
-  disabled={!selectedRoom?.is_bookable}
-  onClick={() => {
-    if (!selectedRoom?.is_bookable) {
-      alert('This room is blocked by admin and cannot be reserved.');
-      return;
-    }
-    setReserveDialogOpen(true);
-  }}
->
-  Reserve
-</Button>
+          message "\e[1;34m info: Logging into container registry"
+          docker login --username $REGISTRY_USER -p $REGISTRY_TOKEN gitlab.mitsogo.com:4567
 
-// Inside handleReserveSubmit()
-if (!selectedRoom?.is_bookable) {
-  alert("This room is currently blocked by admin.");
-  return;
-}
+          if [ $? -ne 0 ]; then
+            message "\e[1;31m critical: Error while logging into container registry"
+            exit 1
+          else
+            message "\e[1;34m info: Successfully logged into container registry"
+          fi
+
+          message "\e[1;34m info: Pulling docker images"
+          FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose pull
+
+          if [ $? -ne 0 ]; then
+            message "\e[1;31m critical: Error while pulling images from container registry"
+            exit 2
+          else
+            message "\e[1;34m info: Successfully pulled docker images from container registry"
+          fi
+
+          message "\e[1;34m info: Updating containers with latest image"
+          FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose up -d
+
+          if [ $? -ne 0 ]; then
+            message "\e[1;31m critical: Failed to update containers"
+            exit 3
+          else
+            message "\e[1;34m info: Successfully updated containers with latest image"
+          fi
+
+          message "\e[1;34m info: Logging out from container registry"
+          docker logout gitlab.com
+        chdir: "{{ appdir | default('/opt/app') }}"
+      environment:
+        REGISTRY_TOKEN: "{{ lookup('env', 'REGISTRY_TOKEN') }}"
+        REGISTRY_USER: "{{ lookup('env', 'REGISTRY_USER') }}"
+        FRONTEND_VERSION: "{{ FRONTEND_VERSION | default('latest') }}"
+        BACKEND_VERSION: "{{ BACKEND_VERSION | default('latest') }}"
+        CREDENTIAL_DIR: "{{ CREDENTIAL_DIR }}"
+        TOKEN_FILE: "{{ CREDENTIAL_DIR }}/envfile.env"
+      register: output
+
+    - debug:
+        msg: "{{ output.stdout_lines }}"
+    - debug:
+        msg: "{{ output.stderr.split('\n') }}"
+
+    - name: Failing on errors
+      fail:
+        msg: "\033[31mStatus app update failed\033[0m"
+      when: output.rc != 0
+
+
+
+
+
+
+
+envfile.env.j2
+
+
+[zabbix]
+ZABBIX_URL = {{ ZABBIX_URL }}
+ZABBIX_USER = {{ ZABBIX_USER }}
+ZABBIX_PASSWORD = {{ ZABBIX_PASSWORD }}
+
+[azure]
+AZURE_CLIENT_ID = {{ AZURE_CLIENT_ID }}
+AZURE_TENANT_ID = {{ AZURE_TENANT_ID }}
+AZURE_REDIRECT_URL = {{ AZURE_REDIRECT_URL }}
+AZURE_SECRET = {{ AZURE_SECRET }}
+
+[middleware]
+OPEN_PATHS={{ OPEN_PATHS }}
+HYBRID_PATHS={{ HYBRID_PATHS }}
+
+[sentry]
+dsn={{ SENTRY_DSN }}
+release={{ SENTRY_RELEASE }}
+
+
+
+
+deployment.yml
+
+
+.build-web:
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  image: docker:24.0.9
+  services:
+  - name: docker:24.0.9-dind
+  before_script:
+    - echo $CI_JOB_TOKEN | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - mv "$REACT_CREDENTIALS" web/.env
+    - docker build --no-cache -f ".gitlab/dockerfiles/web/dockerfile" -t "gitlab.mitsogo.com:4567/devops/statusapp/web:$TAG" --progress plain .
+      --label "org.label-schema.schema-version=1.0"
+      --label "org.label-schema.vcs-ref=${CI_COMMIT_REF_NAME}"
+      --label "org.label-schema.build-date=$(date +%Y-%m-%dT%T%z)"
+      --label "org.label-schema.vendor=Mitsogo Inc"
+      --label "org.label-schema.verion=${TAG}"
+      --label "org.label-schema.name=status-app-web"
+    - docker push gitlab.mitsogo.com:4567/devops/statusapp/web:$TAG
+  tags:
+    - imagebuilder_docker
+
+
+build-beta-web:
+  extends: .build-web
+  environment:
+    name: beta
+    action: prepare
+  variables:
+    TAG: "staging"
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^staging_[0-9].*/
+
+build-prod-web:
+  extends: .build-web
+  environment:
+    name: prod
+    action: prepare
+  variables:
+    TAG: "latest"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+
+.build-server:
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
+  image: docker:24.0.9
+  services:
+  - name: docker:24.0.9-dind
+  before_script:
+    - echo $CI_JOB_TOKEN | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - docker build -f ".gitlab/dockerfiles/server/dockerfile" -t "gitlab.mitsogo.com:4567/devops/statusapp/server:$TAG" .
+      --label "org.label-schema.schema-version=1.0"
+      --label "org.label-schema.vcs-ref=${CI_COMMIT_REF_NAME}"
+      --label "org.label-schema.build-date=$(date +%Y-%m-%dT%T%z)"
+      --label "org.label-schema.vendor=Mitsogo Inc"
+      --label "org.label-schema.verion=${TAG}"
+      --label "org.label-schema.name=status-app-server"
+    - docker push gitlab.mitsogo.com:4567/devops/statusapp/server:$TAG
+  tags:
+    - imagebuilder_docker   
+
+build-beta-server:
+  extends: .build-server
+  environment:
+    name: beta
+    action: prepare
+  variables:
+    TAG: "staging"
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^staging_[0-9].*/
+
+build-prod-server:
+  extends: .build-server
+  environment:
+    name: prod
+    action: prepare
+  variables:
+    TAG: "latest"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
+    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
+
+beta:
+  stage: deployment
+  extends: .ansible-deployment
+  environment:
+    name: beta
+    action: start
+  variables:
+    PLAYBOOK_PATH: ".gitlab/deployment/playbooks/updater.yml"
+    INVENTORY: ".gitlab/deployment/playbooks/inventory.txt"
+    ANSIBLE_EXTRA_VARS: >
+      ansible_sudo_pass=$SUDOPASS
+      BACKEND_VERSION='staging'
+      FRONTEND_VERSION='staging'
+      CREDENTIAL_DIR=$CREDENTIAL_DIR
+      TOKENS=$TOKENS
+      ZABBIX_URL=$ZABBIX_URL
+      ZABBIX_USER=$ZABBIX_USER
+      ZABBIX_PASSWORD=$ZABBIX_PASSWORD
+      AZURE_CLIENT_ID=$AZURE_CLIENT_ID
+      AZURE_TENANT_ID=$AZURE_TENANT_ID
+      AZURE_REDIRECT_URL=$AZURE_REDIRECT_URL
+      AZURE_SECRET=$AZURE_SECRET
+      OPEN_PATHS=$OPEN_PATHS
+      HYBRID_PATHS=$HYBRID_PATHS
+      SENTRY_DSN=$SENTRY_DSN
+      SENTRY_RELEASE=$SENTRY_RELEASE
+      
+    LIMIT: "beta"
+    SUBSCRIBE_EMAIL: "False"
+    APPROVER_EMAILS: "$GITLAB_USER_EMAIL"
+  script:
+      - ansible-playbook "$PLAYBOOK_PATH" -i "$INVENTORY" -e "$ANSIBLE_EXTRA_VARS"
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
+
+production:
+  stage: deployment
+  extends: .ansible-deployment
+  environment:
+    name: prod
+    action: start
+  variables:
+    PLAYBOOK_PATH: ".gitlab/deployment/playbooks/updater.yml"
+    INVENTORY: ".gitlab/deployment/playbooks/inventory.txt"
+    ANSIBLE_EXTRA_VARS: "ansible_sudo_pass=$SUDOPASS appdir=/opt/apps/statusapp CREDENTIAL_DIR=$CREDENTIAL_DIR TOKENS=$TOKENS"
+    LIMIT: "production"
+    SUBSCRIBE_EMAIL: "False"
+    APPROVER_EMAILS: "$DEPLOYMENT_APPROVERS"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
