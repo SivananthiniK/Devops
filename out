@@ -1,0 +1,88 @@
+updater
+
+
+- name: Deploy status app service
+  hosts: all
+  become: true
+  become_user: root
+  become_method: sudo
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Update docker-compose.yml
+      copy:
+        src: ../docker-compose.yml  
+        dest: "{{ appdir | default('/opt/app') }}/docker-compose.yml"
+
+    - name: Create credentials directory if it doesn't exist
+      file:
+        path: "{{ CREDENTIAL_DIR }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy token content to file (if provided)
+      copy:
+        src: "{{ TOKENS }}"
+        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
+      when: TOKENS is defined
+
+    - name: Render environment variables to env file
+      template:
+        src: "templates/envfile.env.j2"
+        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
+
+    - name: Update containers using docker compose
+      no_log: true
+      ignore_errors: true
+      shell: |
+        message() {
+          echo "$(date +'%Y-%m-%d %H:%M:%S') $HOSTNAME: $1"
+        }
+
+        message "Logging into container registry"
+        docker login --username $REGISTRY_USER -p $REGISTRY_TOKEN gitlab.mitsogo.com:4567
+        if [ $? -ne 0 ]; then
+          message "Error while logging into container registry"
+          exit 1
+        fi
+
+        message "Pulling docker images"
+        FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose pull
+        if [ $? -ne 0 ]; then
+          message "Error while pulling images from container registry"
+          exit 2
+        fi
+
+        message "Updating containers with latest image"
+        FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose up -d
+        if [ $? -ne 0 ]; then
+          message "Failed to update containers"
+          exit 3
+        fi
+
+        message "Logging out from container registry"
+        docker logout gitlab.mitsogo.com
+      args:
+        chdir: "{{ appdir | default('/opt/app') }}"
+      environment:
+        REGISTRY_TOKEN: "{{ lookup('env', 'REGISTRY_TOKEN') }}"
+        REGISTRY_USER: "{{ lookup('env', 'REGISTRY_USER') }}"
+        FRONTEND_VERSION: "{{ FRONTEND_VERSION | default('latest') }}"
+        BACKEND_VERSION: "{{ BACKEND_VERSION | default('latest') }}"
+        CREDENTIAL_DIR: "{{ CREDENTIAL_DIR }}"
+        TOKEN_FILE: "{{ CREDENTIAL_DIR }}/envfile.env"
+      register: output
+
+    - name: Show standard output
+      debug:
+        var: output.stdout_lines
+
+    - name: Show error output
+      debug:
+        var: output.stderr_lines
+
+    - name: Fail if container update failed
+      fail:
+        msg: "Status app update failed"
+      when: output.rc != 0
