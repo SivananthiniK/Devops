@@ -112,3 +112,24 @@ HYBRID_PATHS={{ HYBRID_PATHS | join(',') if HYBRID_PATHS is iterable and HYBRID_
 dsn={{ SENTRY_DSN }}
 release={{ SENTRY_RELEASE }}
 
+
+
+
+
+--label "org.label-schema.version=${TAG}"
+
+.ansible-deployment:
+  stage: deployment
+  image: python:3.10
+  before_script:
+    - pip install ansible
+
+
+
+
+
+script:
+  - >
+    ansible-playbook "$PLAYBOOK_PATH" -i "$INVENTORY"
+    --extra-vars "$ANSIBLE_EXTRA_VARS"
+
