@@ -86,3 +86,29 @@ updater
       fail:
         msg: "Status app update failed"
       when: output.rc != 0
+
+
+
+
+env
+
+
+[zabbix]
+ZABBIX_URL = {{ ZABBIX_URL }}
+ZABBIX_USER = {{ ZABBIX_USER }}
+ZABBIX_PASSWORD = {{ ZABBIX_PASSWORD }}
+
+[azure]
+AZURE_CLIENT_ID = {{ AZURE_CLIENT_ID }}
+AZURE_TENANT_ID = {{ AZURE_TENANT_ID }}
+AZURE_REDIRECT_URL = {{ AZURE_REDIRECT_URL }}
+AZURE_SECRET = {{ AZURE_SECRET }}
+
+[middleware]
+OPEN_PATHS={{ OPEN_PATHS | join(',') if OPEN_PATHS is iterable and OPEN_PATHS is not string else OPEN_PATHS }}
+HYBRID_PATHS={{ HYBRID_PATHS | join(',') if HYBRID_PATHS is iterable and HYBRID_PATHS is not string else HYBRID_PATHS }}
+
+[sentry]
+dsn={{ SENTRY_DSN }}
+release={{ SENTRY_RELEASE }}
+
