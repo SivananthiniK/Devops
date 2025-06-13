@@ -2,7 +2,12 @@ import requests
 from datetime import datetime, timedelta
 
 access_token = "YOUR_ACCESS_TOKEN"
-user_email = "room1@yourdomain.com"
+room_emails = [
+    "room1@yourdomain.com",
+    "room2@yourdomain.com",
+    "room3@yourdomain.com"
+]
+
 start = "2025-06-13T09:00:00"
 end = "2025-06-13T17:00:00"
 
@@ -11,324 +16,56 @@ headers = {
     "Prefer": 'outlook.timezone="India Standard Time"'
 }
 
-url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
-params = {
-    "startDateTime": start,
-    "endDateTime": end
-}
-
-response = requests.get(url, headers=headers, params=params)
-events = response.json().get("value", [])
-
-# Create hourly slots
-start_time = datetime.fromisoformat(start)
-end_time = datetime.fromisoformat(end)
-slots = {}
-
-while start_time < end_time:
-    slot_end = start_time + timedelta(hours=1)
-    slots[start_time.strftime('%H:%M')] = "free"
-    for event in events:
-        event_start = datetime.fromisoformat(event["start"]["dateTime"])
-        event_end = datetime.fromisoformat(event["end"]["dateTime"])
-        status = event.get("showAs", "busy")
-        if start_time < event_end and slot_end > event_start:
-            slots[start_time.strftime('%H:%M')] = status
-            break
-    start_time = slot_end
-
-for time, status in slots.items():
-    print(f"{time} - {status}")
-
-
-
-
-
-
-
-ChatGPT
-You said:
-I am running a project. Azures getSchedule api is not working. Give other steps, commands and explanation and code to achieve the same output as getSchedule apo gives
-ChatGPT said:
-If the getSchedule API from Microsoft Graph is not working or unavailable, you can still build the same functionality manually using Microsoft Graph APIs like:
-
-/calendarView
-
-/events
-
-/findMeetingTimes (limited use)
-
-/calendar/getSchedule (your current one, skipping for now)
-
-✅ Objective of getSchedule
-The getSchedule API is mainly used to:
-
-Retrieve the availability (Free/Busy/Tentative/OOF) of users/rooms for a time range.
-
-✅ Manual Alternative to getSchedule
-We’ll replicate this manually by:
-
-🔁 Step-by-Step Plan
-Step 1: Get Room/User Calendar Events
-Use the /calendarView API to get events in a specific time range.
-
-📌 API Endpoint:
-
-GET /users/{room_id or email}/calendarView?startDateTime=2025-06-13T09:00:00&endDateTime=2025-06-13T17:00:00
-📌 Headers:
-
-Authorization: Bearer {access_token}
-Prefer: outlook.timezone="India Standard Time"
-📌 Scope Required:
-
-Calendars.Read or Calendars.Read.Shared
-
-📌 Example Request (curl):
-
-curl -X GET \
-  'https://graph.microsoft.com/v1.0/users/room1@yourdomain.com/calendarView?startDateTime=2025-06-13T09:00:00&endDateTime=2025-06-13T17:00:00' \
-  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
-  -H 'Prefer: outlook.timezone="India Standard Time"'
-📌 Example Output:
-
-{
-  "value": [
-    {
-      "subject": "Team Sync",
-      "start": { "dateTime": "2025-06-13T09:00:00", "timeZone": "IST" },
-      "end": { "dateTime": "2025-06-13T10:00:00", "timeZone": "IST" },
-      "showAs": "busy"
-    },
-    ...
-  ]
-}
-Step 2: Process Calendar Events to Create Availability View
-📌 For each hour (or 30-min) slot between your startDateTime and endDateTime, classify it based on overlaps with showAs status of events:
-
-free: no overlapping event
-
-busy: overlapping with an event marked "busy"
-
-tentative: overlapping with a tentative event
-
-oof: out of office
-
-You can do this in code (e.g., Python or JavaScript).
-
-✅ Sample Code in Python to Simulate Availability View
-import requests
-from datetime import datetime, timedelta
-
-access_token = "YOUR_ACCESS_TOKEN"
-user_email = "room1@yourdomain.com"
-start = "2025-06-13T09:00:00"
-end = "2025-06-13T17:00:00"
-
-headers = {
-    "Authorization": f"Bearer {access_token}",
-    "Prefer": 'outlook.timezone="India Standard Time"'
-}
-
-url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
-params = {
-    "startDateTime": start,
-    "endDateTime": end
-}
-
-response = requests.get(url, headers=headers, params=params)
-events = response.json().get("value", [])
-
-# Create hourly slots
-start_time = datetime.fromisoformat(start)
-end_time = datetime.fromisoformat(end)
-slots = {}
-
-while start_time < end_time:
-    slot_end = start_time + timedelta(hours=1)
-    slots[start_time.strftime('%H:%M')] = "free"
-    for event in events:
-        event_start = datetime.fromisoformat(event["start"]["dateTime"])
-        event_end = datetime.fromisoformat(event["end"]["dateTime"])
-        status = event.get("showAs", "busy")
-        if start_time < event_end and slot_end > event_start:
-            slots[start_time.strftime('%H:%M')] = status
-            break
-    start_time = slot_end
-
-for time, status in slots.items():
-    print(f"{time} - {status}")
-✅ Optional Enhancement: Call for Multiple Rooms at Once
-You can run the above code in a loop over multiple room emails.
-
-✅ Alternative: Use /findMeetingTimes (Optional)
-If you’re trying to find free slots for meeting, not just availability view, then:
-
-POST /me/findMeetingTimes
-📌 This needs:
-
-Attendees list
-
-Time constraints
-
-Duration
-
-It's more for suggesting slots rather than showing full-day availability.
-
-🧩 Summary of Alternative API Flow
-Step	Action	API
-1	Get room email or ID	/users or /places/microsoft.graph.room
-2	Get events for date range	/users/{id}/calendarView
-3	Process availability	Custom logic
-4	(Optional) Suggest slots	/findMeetingTimes
-✅ Final Notes
-This is more flexible than getSchedule (supports custom logic, multiple rooms).
-
-It’s slower than getSchedule if you're checking many users due to multiple API calls.
-
-Consider batching requests if you need to scale this.
-
-Would you like:
-
-A JavaScript (Node.js) or React-based version?
-
-A detailed Bash script or Postman collection?
-
-Batch request format?
-
-Let me know how you plan to implement this (CLI, Web App, Azure Function etc.), and I’ll tailor it.
-
-You said:
-What this does? 
-import requests
-from datetime import datetime, timedelta
-
-access_token = "YOUR_ACCESS_TOKEN"
-user_email = "room1@yourdomain.com"
-start = "2025-06-13T09:00:00"
-end = "2025-06-13T17:00:00"
-
-headers = {
-    "Authorization": f"Bearer {access_token}",
-    "Prefer": 'outlook.timezone="India Standard Time"'
-}
-
-url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
-params = {
-    "startDateTime": start,
-    "endDateTime": end
-}
-
-response = requests.get(url, headers=headers, params=params)
-events = response.json().get("value", [])
-
-# Create hourly slots
-start_time = datetime.fromisoformat(start)
-end_time = datetime.fromisoformat(end)
-slots = {}
-
-while start_time < end_time:
-    slot_end = start_time + timedelta(hours=1)
-    slots[start_time.strftime('%H:%M')] = "free"
-    for event in events:
-        event_start = datetime.fromisoformat(event["start"]["dateTime"])
-        event_end = datetime.fromisoformat(event["end"]["dateTime"])
-        status = event.get("showAs", "busy")
-        if start_time < event_end and slot_end > event_start:
-            slots[start_time.strftime('%H:%M')] = status
-            break
-    start_time = slot_end
-
-for time, status in slots.items():
-    print(f"{time} - {status}")
-ChatGPT said:
-This Python code is a manual replacement for Microsoft Graph's getSchedule API. It checks a user's or room's availability for a given day and builds an hourly free/busy view.
-
-✅ What the Code Does (Step-by-Step):
-🔹 1. Setup Access and Time Range
-access_token = "YOUR_ACCESS_TOKEN"
-user_email = "room1@yourdomain.com"
-start = "2025-06-13T09:00:00"
-end = "2025-06-13T17:00:00"
-You define:
-
-An access token (access_token) to authenticate with Microsoft Graph.
-
-A room or user email (user_email) to check availability.
-
-A time window: 9:00 AM to 5:00 PM.
-
-🔹 2. Call the Microsoft Graph API
-url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
-params = {
-    "startDateTime": start,
-    "endDateTime": end
-}
-response = requests.get(url, headers=headers, params=params)
-events = response.json().get("value", [])
-This calls:
-
-/users/{user_email}/calendarView?startDateTime=...&endDateTime=...
-to get all calendar events during the specified time range.
-
-The response contains a list of events (meetings, out-of-office, etc.).
-
-🔹 3. Initialize Hourly Time Slots
-slots = {}
-start_time = datetime.fromisoformat(start)
-end_time = datetime.fromisoformat(end)
-A dictionary slots is initialized to store time slots and their status.
-
-The code loops from 09:00 to 17:00 in 1-hour steps.
-
-🔹 4. Loop Over Each Time Slot
-while start_time < end_time:
-    slot_end = start_time + timedelta(hours=1)
-    slots[start_time.strftime('%H:%M')] = "free"
-Each slot is initialized as "free".
-
-Then, for each slot, we check:
-
-    for event in events:
-        event_start = datetime.fromisoformat(event["start"]["dateTime"])
-        event_end = datetime.fromisoformat(event["end"]["dateTime"])
-        status = event.get("showAs", "busy")
-        if start_time < event_end and slot_end > event_start:
-            slots[start_time.strftime('%H:%M')] = status
-            break
-We check whether this time slot overlaps with any calendar event.
-
-If it does, mark the slot as:
-
-"busy" (or "tentative", "oof", etc.) based on showAs.
-
-🔹 5. Print the Final Availability View
-for time, status in slots.items():
-    print(f"{time} - {status}")
-This prints the availability status for each hour.
-
-✅ Example Output
+for user_email in room_emails:
+    print(f"\n📅 Availability for: {user_email}")
+    url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
+    params = {
+        "startDateTime": start,
+        "endDateTime": end
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code != 200:
+        print(f"Error fetching calendar for {user_email}: {response.text}")
+        continue
+
+    events = response.json().get("value", [])
+    slots = {}
+
+    # Build time slots
+    start_time = datetime.fromisoformat(start)
+    end_time = datetime.fromisoformat(end)
+
+    while start_time < end_time:
+        slot_end = start_time + timedelta(hours=1)
+        slots[start_time.strftime('%H:%M')] = "free"
+        for event in events:
+            event_start = datetime.fromisoformat(event["start"]["dateTime"])
+            event_end = datetime.fromisoformat(event["end"]["dateTime"])
+            status = event.get("showAs", "busy")
+            if start_time < event_end and slot_end > event_start:
+                slots[start_time.strftime('%H:%M')] = status
+                break
+        start_time = slot_end
+
+    for time, status in slots.items():
+        print(f"{time} - {status}")
+
+
+
+
+📅 Availability for: room1@yourdomain.com
 09:00 - busy
-10:00 - busy
-11:00 - free
-12:00 - tentative
-13:00 - free
-14:00 - free
-15:00 - oof
-16:00 - free
-✅ Summary
-Purpose	Achieved By
-Get a user/room’s availability	Fetching events using /calendarView
-Interpret availability	Based on overlap with time slots and showAs field
-Display like getSchedule	By printing each slot and its status
-Would you like to:
+10:00 - free
+11:00 - busy
+...
 
-Make this work with multiple rooms at once?
+📅 Availability for: room2@yourdomain.com
+09:00 - free
+10:00 - free
+11:00 - busy
+...
 
-Convert this into a web app, CLI, or batch API?
-
-Modify the interval to 30 min instead of hourly?
-
-Let me know how you plan to use it.
-
-
+📅 Availability for: room3@yourdomain.com
+...
 
