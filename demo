@@ -1,94 +1,44 @@
-updater.yml
+import requests
+from datetime import datetime, timedelta
 
+access_token = "YOUR_ACCESS_TOKEN"
+user_email = "room1@yourdomain.com"
+start = "2025-06-13T09:00:00"
+end = "2025-06-13T17:00:00"
 
-- name: deploy status app service
-  hosts: all
-  become: true
-  become_user: root
-  become_method: sudo
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
-  tasks:
-    - name: Updating docker-compose.yml
-      copy:
-        src: ../docker-compose.yml  
-        dest: "{{ appdir | default('/opt/app') }}"
-    
-    - name: Create credentials directory if it doesn't exist
-      ansible.builtin.file:
-        path: "{{ CREDENTIAL_DIR }}"
-        state: directory
-    
-    - name: Copy Token content to file
-      ansible.builtin.copy:
-        src: "{{ TOKENS }}"
-        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
-    
-    -name: Copy variables to env file
-      ansible.builtin.template:
-        src: "templates/envfile.env.j2"
-        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
- 
-    - name: Updating container
-      no_log: true
-      ignore_errors: true
-      shell:
-        cmd: |
-          message() {
-            echo -e "$(date +'%Y-%m-%d %H:%M:%S') $HOSTNAME:$1"
-          }
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Prefer": 'outlook.timezone="India Standard Time"'
+}
 
-          message "\e[1;34m info: Logging into container registry"
-          docker login --username $REGISTRY_USER -p $REGISTRY_TOKEN gitlab.mitsogo.com:4567
+url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
+params = {
+    "startDateTime": start,
+    "endDateTime": end
+}
 
-          if [ $? -ne 0 ]; then
-            message "\e[1;31m critical: Error while logging into container registry"
-            exit 1
-          else
-            message "\e[1;34m info: Successfully logged into container registry"
-          fi
+response = requests.get(url, headers=headers, params=params)
+events = response.json().get("value", [])
 
-          message "\e[1;34m info: Pulling docker images"
-          FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose pull
+# Create hourly slots
+start_time = datetime.fromisoformat(start)
+end_time = datetime.fromisoformat(end)
+slots = {}
 
-          if [ $? -ne 0 ]; then
-            message "\e[1;31m critical: Error while pulling images from container registry"
-            exit 2
-          else
-            message "\e[1;34m info: Successfully pulled docker images from container registry"
-          fi
+while start_time < end_time:
+    slot_end = start_time + timedelta(hours=1)
+    slots[start_time.strftime('%H:%M')] = "free"
+    for event in events:
+        event_start = datetime.fromisoformat(event["start"]["dateTime"])
+        event_end = datetime.fromisoformat(event["end"]["dateTime"])
+        status = event.get("showAs", "busy")
+        if start_time < event_end and slot_end > event_start:
+            slots[start_time.strftime('%H:%M')] = status
+            break
+    start_time = slot_end
 
-          message "\e[1;34m info: Updating containers with latest image"
-          FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose up -d
-
-          if [ $? -ne 0 ]; then
-            message "\e[1;31m critical: Failed to update containers"
-            exit 3
-          else
-            message "\e[1;34m info: Successfully updated containers with latest image"
-          fi
-
-          message "\e[1;34m info: Logging out from container registry"
-          docker logout gitlab.com
-        chdir: "{{ appdir | default('/opt/app') }}"
-      environment:
-        REGISTRY_TOKEN: "{{ lookup('env', 'REGISTRY_TOKEN') }}"
-        REGISTRY_USER: "{{ lookup('env', 'REGISTRY_USER') }}"
-        FRONTEND_VERSION: "{{ FRONTEND_VERSION | default('latest') }}"
-        BACKEND_VERSION: "{{ BACKEND_VERSION | default('latest') }}"
-        CREDENTIAL_DIR: "{{ CREDENTIAL_DIR }}"
-        TOKEN_FILE: "{{ CREDENTIAL_DIR }}/envfile.env"
-      register: output
-
-    - debug:
-        msg: "{{ output.stdout_lines }}"
-    - debug:
-        msg: "{{ output.stderr.split('\n') }}"
-
-    - name: Failing on errors
-      fail:
-        msg: "\033[31mStatus app update failed\033[0m"
-      when: output.rc != 0
+for time, status in slots.items():
+    print(f"{time} - {status}")
 
 
 
@@ -96,173 +46,289 @@ updater.yml
 
 
 
-envfile.env.j2
+ChatGPT
+You said:
+I am running a project. Azures getSchedule api is not working. Give other steps, commands and explanation and code to achieve the same output as getSchedule apo gives
+ChatGPT said:
+If the getSchedule API from Microsoft Graph is not working or unavailable, you can still build the same functionality manually using Microsoft Graph APIs like:
+
+/calendarView
+
+/events
+
+/findMeetingTimes (limited use)
+
+/calendar/getSchedule (your current one, skipping for now)
+
+✅ Objective of getSchedule
+The getSchedule API is mainly used to:
+
+Retrieve the availability (Free/Busy/Tentative/OOF) of users/rooms for a time range.
+
+✅ Manual Alternative to getSchedule
+We’ll replicate this manually by:
+
+🔁 Step-by-Step Plan
+Step 1: Get Room/User Calendar Events
+Use the /calendarView API to get events in a specific time range.
+
+📌 API Endpoint:
+
+GET /users/{room_id or email}/calendarView?startDateTime=2025-06-13T09:00:00&endDateTime=2025-06-13T17:00:00
+📌 Headers:
+
+Authorization: Bearer {access_token}
+Prefer: outlook.timezone="India Standard Time"
+📌 Scope Required:
+
+Calendars.Read or Calendars.Read.Shared
+
+📌 Example Request (curl):
+
+curl -X GET \
+  'https://graph.microsoft.com/v1.0/users/room1@yourdomain.com/calendarView?startDateTime=2025-06-13T09:00:00&endDateTime=2025-06-13T17:00:00' \
+  -H 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  -H 'Prefer: outlook.timezone="India Standard Time"'
+📌 Example Output:
+
+{
+  "value": [
+    {
+      "subject": "Team Sync",
+      "start": { "dateTime": "2025-06-13T09:00:00", "timeZone": "IST" },
+      "end": { "dateTime": "2025-06-13T10:00:00", "timeZone": "IST" },
+      "showAs": "busy"
+    },
+    ...
+  ]
+}
+Step 2: Process Calendar Events to Create Availability View
+📌 For each hour (or 30-min) slot between your startDateTime and endDateTime, classify it based on overlaps with showAs status of events:
+
+free: no overlapping event
+
+busy: overlapping with an event marked "busy"
+
+tentative: overlapping with a tentative event
+
+oof: out of office
+
+You can do this in code (e.g., Python or JavaScript).
+
+✅ Sample Code in Python to Simulate Availability View
+import requests
+from datetime import datetime, timedelta
+
+access_token = "YOUR_ACCESS_TOKEN"
+user_email = "room1@yourdomain.com"
+start = "2025-06-13T09:00:00"
+end = "2025-06-13T17:00:00"
+
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Prefer": 'outlook.timezone="India Standard Time"'
+}
+
+url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
+params = {
+    "startDateTime": start,
+    "endDateTime": end
+}
+
+response = requests.get(url, headers=headers, params=params)
+events = response.json().get("value", [])
+
+# Create hourly slots
+start_time = datetime.fromisoformat(start)
+end_time = datetime.fromisoformat(end)
+slots = {}
+
+while start_time < end_time:
+    slot_end = start_time + timedelta(hours=1)
+    slots[start_time.strftime('%H:%M')] = "free"
+    for event in events:
+        event_start = datetime.fromisoformat(event["start"]["dateTime"])
+        event_end = datetime.fromisoformat(event["end"]["dateTime"])
+        status = event.get("showAs", "busy")
+        if start_time < event_end and slot_end > event_start:
+            slots[start_time.strftime('%H:%M')] = status
+            break
+    start_time = slot_end
+
+for time, status in slots.items():
+    print(f"{time} - {status}")
+✅ Optional Enhancement: Call for Multiple Rooms at Once
+You can run the above code in a loop over multiple room emails.
+
+✅ Alternative: Use /findMeetingTimes (Optional)
+If you’re trying to find free slots for meeting, not just availability view, then:
+
+POST /me/findMeetingTimes
+📌 This needs:
+
+Attendees list
+
+Time constraints
+
+Duration
+
+It's more for suggesting slots rather than showing full-day availability.
+
+🧩 Summary of Alternative API Flow
+Step	Action	API
+1	Get room email or ID	/users or /places/microsoft.graph.room
+2	Get events for date range	/users/{id}/calendarView
+3	Process availability	Custom logic
+4	(Optional) Suggest slots	/findMeetingTimes
+✅ Final Notes
+This is more flexible than getSchedule (supports custom logic, multiple rooms).
+
+It’s slower than getSchedule if you're checking many users due to multiple API calls.
+
+Consider batching requests if you need to scale this.
+
+Would you like:
+
+A JavaScript (Node.js) or React-based version?
+
+A detailed Bash script or Postman collection?
+
+Batch request format?
+
+Let me know how you plan to implement this (CLI, Web App, Azure Function etc.), and I’ll tailor it.
+
+You said:
+What this does? 
+import requests
+from datetime import datetime, timedelta
+
+access_token = "YOUR_ACCESS_TOKEN"
+user_email = "room1@yourdomain.com"
+start = "2025-06-13T09:00:00"
+end = "2025-06-13T17:00:00"
+
+headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Prefer": 'outlook.timezone="India Standard Time"'
+}
+
+url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
+params = {
+    "startDateTime": start,
+    "endDateTime": end
+}
+
+response = requests.get(url, headers=headers, params=params)
+events = response.json().get("value", [])
+
+# Create hourly slots
+start_time = datetime.fromisoformat(start)
+end_time = datetime.fromisoformat(end)
+slots = {}
+
+while start_time < end_time:
+    slot_end = start_time + timedelta(hours=1)
+    slots[start_time.strftime('%H:%M')] = "free"
+    for event in events:
+        event_start = datetime.fromisoformat(event["start"]["dateTime"])
+        event_end = datetime.fromisoformat(event["end"]["dateTime"])
+        status = event.get("showAs", "busy")
+        if start_time < event_end and slot_end > event_start:
+            slots[start_time.strftime('%H:%M')] = status
+            break
+    start_time = slot_end
+
+for time, status in slots.items():
+    print(f"{time} - {status}")
+ChatGPT said:
+This Python code is a manual replacement for Microsoft Graph's getSchedule API. It checks a user's or room's availability for a given day and builds an hourly free/busy view.
+
+✅ What the Code Does (Step-by-Step):
+🔹 1. Setup Access and Time Range
+access_token = "YOUR_ACCESS_TOKEN"
+user_email = "room1@yourdomain.com"
+start = "2025-06-13T09:00:00"
+end = "2025-06-13T17:00:00"
+You define:
+
+An access token (access_token) to authenticate with Microsoft Graph.
+
+A room or user email (user_email) to check availability.
+
+A time window: 9:00 AM to 5:00 PM.
+
+🔹 2. Call the Microsoft Graph API
+url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
+params = {
+    "startDateTime": start,
+    "endDateTime": end
+}
+response = requests.get(url, headers=headers, params=params)
+events = response.json().get("value", [])
+This calls:
+
+/users/{user_email}/calendarView?startDateTime=...&endDateTime=...
+to get all calendar events during the specified time range.
+
+The response contains a list of events (meetings, out-of-office, etc.).
+
+🔹 3. Initialize Hourly Time Slots
+slots = {}
+start_time = datetime.fromisoformat(start)
+end_time = datetime.fromisoformat(end)
+A dictionary slots is initialized to store time slots and their status.
+
+The code loops from 09:00 to 17:00 in 1-hour steps.
+
+🔹 4. Loop Over Each Time Slot
+while start_time < end_time:
+    slot_end = start_time + timedelta(hours=1)
+    slots[start_time.strftime('%H:%M')] = "free"
+Each slot is initialized as "free".
+
+Then, for each slot, we check:
+
+    for event in events:
+        event_start = datetime.fromisoformat(event["start"]["dateTime"])
+        event_end = datetime.fromisoformat(event["end"]["dateTime"])
+        status = event.get("showAs", "busy")
+        if start_time < event_end and slot_end > event_start:
+            slots[start_time.strftime('%H:%M')] = status
+            break
+We check whether this time slot overlaps with any calendar event.
+
+If it does, mark the slot as:
+
+"busy" (or "tentative", "oof", etc.) based on showAs.
+
+🔹 5. Print the Final Availability View
+for time, status in slots.items():
+    print(f"{time} - {status}")
+This prints the availability status for each hour.
+
+✅ Example Output
+09:00 - busy
+10:00 - busy
+11:00 - free
+12:00 - tentative
+13:00 - free
+14:00 - free
+15:00 - oof
+16:00 - free
+✅ Summary
+Purpose	Achieved By
+Get a user/room’s availability	Fetching events using /calendarView
+Interpret availability	Based on overlap with time slots and showAs field
+Display like getSchedule	By printing each slot and its status
+Would you like to:
+
+Make this work with multiple rooms at once?
+
+Convert this into a web app, CLI, or batch API?
+
+Modify the interval to 30 min instead of hourly?
+
+Let me know how you plan to use it.
 
 
-[zabbix]
-ZABBIX_URL = {{ ZABBIX_URL }}
-ZABBIX_USER = {{ ZABBIX_USER }}
-ZABBIX_PASSWORD = {{ ZABBIX_PASSWORD }}
 
-[azure]
-AZURE_CLIENT_ID = {{ AZURE_CLIENT_ID }}
-AZURE_TENANT_ID = {{ AZURE_TENANT_ID }}
-AZURE_REDIRECT_URL = {{ AZURE_REDIRECT_URL }}
-AZURE_SECRET = {{ AZURE_SECRET }}
-
-[middleware]
-OPEN_PATHS={{ OPEN_PATHS }}
-HYBRID_PATHS={{ HYBRID_PATHS }}
-
-[sentry]
-dsn={{ SENTRY_DSN }}
-release={{ SENTRY_RELEASE }}
-
-
-
-
-deployment.yml
-
-
-.build-web:
-  stage: build
-  variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
-  image: docker:24.0.9
-  services:
-  - name: docker:24.0.9-dind
-  before_script:
-    - echo $CI_JOB_TOKEN | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-  script:
-    - mv "$REACT_CREDENTIALS" web/.env
-    - docker build --no-cache -f ".gitlab/dockerfiles/web/dockerfile" -t "gitlab.mitsogo.com:4567/devops/statusapp/web:$TAG" --progress plain .
-      --label "org.label-schema.schema-version=1.0"
-      --label "org.label-schema.vcs-ref=${CI_COMMIT_REF_NAME}"
-      --label "org.label-schema.build-date=$(date +%Y-%m-%dT%T%z)"
-      --label "org.label-schema.vendor=Mitsogo Inc"
-      --label "org.label-schema.verion=${TAG}"
-      --label "org.label-schema.name=status-app-web"
-    - docker push gitlab.mitsogo.com:4567/devops/statusapp/web:$TAG
-  tags:
-    - imagebuilder_docker
-
-
-build-beta-web:
-  extends: .build-web
-  environment:
-    name: beta
-    action: prepare
-  variables:
-    TAG: "staging"
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^staging_[0-9].*/
-
-build-prod-web:
-  extends: .build-web
-  environment:
-    name: prod
-    action: prepare
-  variables:
-    TAG: "latest"
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
-
-.build-server:
-  stage: build
-  variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
-  image: docker:24.0.9
-  services:
-  - name: docker:24.0.9-dind
-  before_script:
-    - echo $CI_JOB_TOKEN | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
-  script:
-    - docker build -f ".gitlab/dockerfiles/server/dockerfile" -t "gitlab.mitsogo.com:4567/devops/statusapp/server:$TAG" .
-      --label "org.label-schema.schema-version=1.0"
-      --label "org.label-schema.vcs-ref=${CI_COMMIT_REF_NAME}"
-      --label "org.label-schema.build-date=$(date +%Y-%m-%dT%T%z)"
-      --label "org.label-schema.vendor=Mitsogo Inc"
-      --label "org.label-schema.verion=${TAG}"
-      --label "org.label-schema.name=status-app-server"
-    - docker push gitlab.mitsogo.com:4567/devops/statusapp/server:$TAG
-  tags:
-    - imagebuilder_docker   
-
-build-beta-server:
-  extends: .build-server
-  environment:
-    name: beta
-    action: prepare
-  variables:
-    TAG: "staging"
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME =~ /^staging_[0-9].*/
-
-build-prod-server:
-  extends: .build-server
-  environment:
-    name: prod
-    action: prepare
-  variables:
-    TAG: "latest"
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
-    - if: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"
-
-beta:
-  stage: deployment
-  extends: .ansible-deployment
-  environment:
-    name: beta
-    action: start
-  variables:
-    PLAYBOOK_PATH: ".gitlab/deployment/playbooks/updater.yml"
-    INVENTORY: ".gitlab/deployment/playbooks/inventory.txt"
-    ANSIBLE_EXTRA_VARS: >
-      ansible_sudo_pass=$SUDOPASS
-      BACKEND_VERSION='staging'
-      FRONTEND_VERSION='staging'
-      CREDENTIAL_DIR=$CREDENTIAL_DIR
-      TOKENS=$TOKENS
-      ZABBIX_URL=$ZABBIX_URL
-      ZABBIX_USER=$ZABBIX_USER
-      ZABBIX_PASSWORD=$ZABBIX_PASSWORD
-      AZURE_CLIENT_ID=$AZURE_CLIENT_ID
-      AZURE_TENANT_ID=$AZURE_TENANT_ID
-      AZURE_REDIRECT_URL=$AZURE_REDIRECT_URL
-      AZURE_SECRET=$AZURE_SECRET
-      OPEN_PATHS=$OPEN_PATHS
-      HYBRID_PATHS=$HYBRID_PATHS
-      SENTRY_DSN=$SENTRY_DSN
-      SENTRY_RELEASE=$SENTRY_RELEASE
-      
-    LIMIT: "beta"
-    SUBSCRIBE_EMAIL: "False"
-    APPROVER_EMAILS: "$GITLAB_USER_EMAIL"
-  script:
-      - ansible-playbook "$PLAYBOOK_PATH" -i "$INVENTORY" -e "$ANSIBLE_EXTRA_VARS"
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^staging_[0-9].*/
-
-production:
-  stage: deployment
-  extends: .ansible-deployment
-  environment:
-    name: prod
-    action: start
-  variables:
-    PLAYBOOK_PATH: ".gitlab/deployment/playbooks/updater.yml"
-    INVENTORY: ".gitlab/deployment/playbooks/inventory.txt"
-    ANSIBLE_EXTRA_VARS: "ansible_sudo_pass=$SUDOPASS appdir=/opt/apps/statusapp CREDENTIAL_DIR=$CREDENTIAL_DIR TOKENS=$TOKENS"
-    LIMIT: "production"
-    SUBSCRIBE_EMAIL: "False"
-    APPROVER_EMAILS: "$DEPLOYMENT_APPROVERS"
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^STATUSAPP_[0-9].*/
