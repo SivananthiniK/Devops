@@ -1,71 +1,39 @@
-import requests
-from datetime import datetime, timedelta
 
-access_token = "YOUR_ACCESS_TOKEN"
-room_emails = [
-    "room1@yourdomain.com",
-    "room2@yourdomain.com",
-    "room3@yourdomain.com"
-]
+def login_auth(request):
+    if request.method == 'POST':
+        access_token = json.loads(request.body).get('token')
+        config_url = f'https://login.microsoftonline.com/{settings.MSAL_TENANT_ID}/discovery/v2.0/keys'
+        response = requests.get(config_url)
+        jwks=response.json()
+        try:
+            decoded_token = jwt.decode(
+            access_token, 
+            key=jwks,
+            algorithms=['RS256'],
+            audience=settings.MSAL_CLIENT_ID,
+            )
+            logger.info('Token decoded. Fetching user information from the database')
+            logger.info("decoded_token {}".format(decoded_token))
+            user_email = decoded_token.get('preferred_username')
+            try:
+                user = AppUser.objects.filter(email=user_email)
+                if user.exists():
+                    user = user.first()
+                    data = {'email': user_email.lower(), 'role': user.role}
+                    data = encrypt_data(json.dumps(data))
+                    jwt_token = jwt.encode({'data': data}, settings.MSAL_CLIENT_SECRET, algorithm='HS256')
+                    if user.role == 'admin':
+                        logger.info('User is admin')
+                        return JsonResponse({'message':'User is admin','jwt_token': jwt_token})
+                    else:
+                        logger.info('User is not admin')
+                        return JsonResponse({'message':'User is not admin','jwt_token': jwt_token})
+            except AppUser.DoesNotExist:
+                logger.warning(f"User not found in the database, Email: {user_email}")
+                return JsonResponse({"error": "User not found in custom users table"}, status=404)
 
-start = "2025-06-13T09:00:00"
-end = "2025-06-13T17:00:00"
+        except Exception as e:
+            logger.error(f"Authorisation error: {str(e)}")
+            raise ValueError(f"Authorisation error: {str(e)}")
 
-headers = {
-    "Authorization": f"Bearer {access_token}",
-    "Prefer": 'outlook.timezone="India Standard Time"'
-}
-
-for user_email in room_emails:
-    print(f"\n📅 Availability for: {user_email}")
-    url = f"https://graph.microsoft.com/v1.0/users/{user_email}/calendarView"
-    params = {
-        "startDateTime": start,
-        "endDateTime": end
-    }
-
-    response = requests.get(url, headers=headers, params=params)
-    if response.status_code != 200:
-        print(f"Error fetching calendar for {user_email}: {response.text}")
-        continue
-
-    events = response.json().get("value", [])
-    slots = {}
-
-    # Build time slots
-    start_time = datetime.fromisoformat(start)
-    end_time = datetime.fromisoformat(end)
-
-    while start_time < end_time:
-        slot_end = start_time + timedelta(hours=1)
-        slots[start_time.strftime('%H:%M')] = "free"
-        for event in events:
-            event_start = datetime.fromisoformat(event["start"]["dateTime"])
-            event_end = datetime.fromisoformat(event["end"]["dateTime"])
-            status = event.get("showAs", "busy")
-            if start_time < event_end and slot_end > event_start:
-                slots[start_time.strftime('%H:%M')] = status
-                break
-        start_time = slot_end
-
-    for time, status in slots.items():
-        print(f"{time} - {status}")
-
-
-
-
-📅 Availability for: room1@yourdomain.com
-09:00 - busy
-10:00 - free
-11:00 - busy
-...
-
-📅 Availability for: room2@yourdomain.com
-09:00 - free
-10:00 - free
-11:00 - busy
-...
-
-📅 Availability for: room3@yourdomain.com
-...
 
