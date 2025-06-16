@@ -1,39 +1,83 @@
+import json
+import jwt
+import requests
+from jwt.algorithms import RSAAlgorithm
 
-def login_auth(request):
-    if request.method == 'POST':
-        access_token = json.loads(request.body).get('token')
-        config_url = f'https://login.microsoftonline.com/{settings.MSAL_TENANT_ID}/discovery/v2.0/keys'
-        response = requests.get(config_url)
-        jwks=response.json()
-        try:
-            decoded_token = jwt.decode(
-            access_token, 
-            key=jwks,
-            algorithms=['RS256'],
-            audience=settings.MSAL_CLIENT_ID,
-            )
-            logger.info('Token decoded. Fetching user information from the database')
-            logger.info("decoded_token {}".format(decoded_token))
-            user_email = decoded_token.get('preferred_username')
-            try:
-                user = AppUser.objects.filter(email=user_email)
-                if user.exists():
-                    user = user.first()
-                    data = {'email': user_email.lower(), 'role': user.role}
-                    data = encrypt_data(json.dumps(data))
-                    jwt_token = jwt.encode({'data': data}, settings.MSAL_CLIENT_SECRET, algorithm='HS256')
-                    if user.role == 'admin':
-                        logger.info('User is admin')
-                        return JsonResponse({'message':'User is admin','jwt_token': jwt_token})
-                    else:
-                        logger.info('User is not admin')
-                        return JsonResponse({'message':'User is not admin','jwt_token': jwt_token})
-            except AppUser.DoesNotExist:
-                logger.warning(f"User not found in the database, Email: {user_email}")
-                return JsonResponse({"error": "User not found in custom users table"}, status=404)
+# ------------------- SETTINGS -------------------
 
-        except Exception as e:
-            logger.error(f"Authorisation error: {str(e)}")
-            raise ValueError(f"Authorisation error: {str(e)}")
+MSAL_TENANT_ID = 'your-tenant-id'          # Replace with your real tenant ID
+MSAL_CLIENT_ID = 'your-client-id'          # Replace with your real client ID
+MSAL_CLIENT_SECRET = 'your-client-secret'  # Replace with your real client secret
 
+# Dummy user list (replace with DB if needed)
+users = {
+    "admin@yourdomain.com": "admin",
+    "user@yourdomain.com": "user"
+}
 
+# ------------------- ENCRYPT FUNCTION -------------------
+
+def encrypt_data(data):
+    # Simulated encrypt function
+    return f"ENCRYPTED({data})"
+
+# ------------------- INPUT YOUR ACCESS TOKEN -------------------
+
+access_token = input("Paste your Azure access token here:\n").strip()
+
+# ------------------- FETCH PUBLIC KEYS FROM AZURE -------------------
+
+jwks_url = f"https://login.microsoftonline.com/{MSAL_TENANT_ID}/discovery/v2.0/keys"
+jwks_response = requests.get(jwks_url)
+jwks = jwks_response.json()["keys"]
+
+# ------------------- DECODE THE TOKEN -------------------
+
+# Extract token header to get key ID
+unverified_header = jwt.get_unverified_header(access_token)
+kid = unverified_header['kid']
+
+# Find the matching key in JWKS
+public_key = None
+for key in jwks:
+    if key["kid"] == kid:
+        public_key = RSAAlgorithm.from_jwk(json.dumps(key))
+        break
+
+if not public_key:
+    print("❌ Could not find a matching key in JWKS.")
+    exit(1)
+
+try:
+    decoded_token = jwt.decode(
+        access_token,
+        key=public_key,
+        algorithms=["RS256"],
+        audience=MSAL_CLIENT_ID
+    )
+    print("✅ Token successfully decoded.")
+    print("Decoded token:", json.dumps(decoded_token, indent=2))
+
+    user_email = decoded_token.get('preferred_username')
+    if not user_email:
+        print("❌ preferred_username not found in token.")
+        exit(1)
+
+    # Simulate user lookup
+    if user_email.lower() in users:
+        role = users[user_email.lower()]
+        data = json.dumps({'email': user_email.lower(), 'role': role})
+        encrypted_data = encrypt_data(data)
+
+        jwt_token = jwt.encode({'data': encrypted_data}, MSAL_CLIENT_SECRET, algorithm='HS256')
+
+        print(f"\n🔐 Login successful for {user_email}")
+        print("Role:", role)
+        print("JWT Token:", jwt_token)
+    else:
+        print(f"❌ User '{user_email}' not found in custom user list.")
+
+except jwt.ExpiredSignatureError:
+    print("❌ Token has expired.")
+except jwt.InvalidTokenError as e:
+    print(f"❌ Invalid token: {str(e)}")
