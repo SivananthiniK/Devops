@@ -1,135 +1,145 @@
-updater
+import os
+import time
+import requests
+import msal
+import logging
+from os.path import expanduser
+from ConfigParser import SafeConfigParser
 
+def upload_file_to_sharepoint(file_path, site="Devops Drive", drive_path="/Cloud_Scheduled_Reports/default", 
+                              library="Documents", link_type="blocksDownload"):
+    """
+    Uploads a file to SharePoint (Microsoft Graph API) and returns the web URL.
 
-- name: Deploy status app service
-  hosts: all
-  become: true
-  become_user: root
-  become_method: sudo
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
+    Parameters:
+        file_path (str): Local file path to upload.
+        site (str): SharePoint site name. Default is "Devops Drive".
+        drive_path (str): SharePoint drive folder path. Example: "/Cloud_Scheduled_Reports/{report_name}".
+        library (str): Document library name. Default is "Documents".
+        link_type (str): Type of link permissions if sharing is added. Default is "blocksDownload".
 
-  tasks:
-    - name: Update docker-compose.yml
-      copy:
-        src: ../docker-compose.yml  
-        dest: "{{ appdir | default('/opt/app') }}/docker-compose.yml"
-
-    - name: Create credentials directory if it doesn't exist
-      file:
-        path: "{{ CREDENTIAL_DIR }}"
-        state: directory
-        mode: '0755'
-
-    - name: Copy token content to file (if provided)
-      copy:
-        src: "{{ TOKENS }}"
-        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
-      when: TOKENS is defined
-
-    - name: Render environment variables to env file
-      template:
-        src: "templates/envfile.env.j2"
-        dest: "{{ CREDENTIAL_DIR }}/envfile.env"
-
-    - name: Update containers using docker compose
-      no_log: true
-      ignore_errors: true
-      shell: |
-        message() {
-          echo "$(date +'%Y-%m-%d %H:%M:%S') $HOSTNAME: $1"
+    Returns:
+        dict: {
+            "status": "success" or "error",
+            "webUrl": SharePoint URL of uploaded file (if success),
+            "error": Error message (if failed)
         }
+    """
 
-        message "Logging into container registry"
-        docker login --username $REGISTRY_USER -p $REGISTRY_TOKEN gitlab.mitsogo.com:4567
-        if [ $? -ne 0 ]; then
-          message "Error while logging into container registry"
-          exit 1
-        fi
+    logger = logging.getLogger(__name__)
+    FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+    logging.basicConfig(format=FORMAT, level=logging.INFO)
 
-        message "Pulling docker images"
-        FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose pull
-        if [ $? -ne 0 ]; then
-          message "Error while pulling images from container registry"
-          exit 2
-        fi
+    # Credential fetching
+    configParser = SafeConfigParser()
+    DEFAULT_CREDENTIALS_FILE = os.path.join(expanduser("~"), '.company/credentials')
+    try:
+        from production import client_id, value
+    except Exception:
+        client_id = None
+        value = None
 
-        message "Updating containers with latest image"
-        FRONTEND_VERSION=$FRONTEND_VERSION BACKEND_VERSION=$BACKEND_VERSION docker compose up -d
-        if [ $? -ne 0 ]; then
-          message "Failed to update containers"
-          exit 3
-        fi
+    def getconfig(profile, variable, environment, default=""):
+        try:
+            configParser.read(os.environ.get('SHARED_CREDENTIALS_FILE', DEFAULT_CREDENTIALS_FILE))
+            return configParser.get(profile, variable)
+        except:
+            return os.environ.get(environment, default)
 
-        message "Logging out from container registry"
-        docker logout gitlab.mitsogo.com
-      args:
-        chdir: "{{ appdir | default('/opt/app') }}"
-      environment:
-        REGISTRY_TOKEN: "{{ lookup('env', 'REGISTRY_TOKEN') }}"
-        REGISTRY_USER: "{{ lookup('env', 'REGISTRY_USER') }}"
-        FRONTEND_VERSION: "{{ FRONTEND_VERSION | default('latest') }}"
-        BACKEND_VERSION: "{{ BACKEND_VERSION | default('latest') }}"
-        CREDENTIAL_DIR: "{{ CREDENTIAL_DIR }}"
-        TOKEN_FILE: "{{ CREDENTIAL_DIR }}/envfile.env"
-      register: output
+    def create_token():
+        nonlocal client_id, value
+        if not client_id or not value:
+            client_id = getconfig('onedrive', 'client_id', 'ONEDRIVE_CLIENTID')
+            value = getconfig('onedrive', 'value', 'ONEDRIVE_VALUE')
+        authority = "https://login.microsoftonline.com/mitsogo.com"
+        scope = "https://graph.microsoft.com/.default"
+        app = msal.ConfidentialClientApplication(client_id, authority=authority, client_credential=value)
+        result = app.acquire_token_for_client(scopes=scope)
+        if 'access_token' in result:
+            return {
+                'Authorization': f"Bearer {result['access_token']}",
+                'Content-Type': "application/json"
+            }
+        else:
+            raise Exception("Token generation failed")
 
-    - name: Show standard output
-      debug:
-        var: output.stdout_lines
+    def upload_small_file(endpoint, file_path, drive_path, header):
+        with open(file_path, 'rb') as f:
+            url = f"{endpoint}{drive_path}/{os.path.basename(file_path)}:/content"
+            response = requests.put(url, headers=header, data=f).json()
+        return response
 
-    - name: Show error output
-      debug:
-        var: output.stderr_lines
+    def upload_large_file(endpoint, file_path, drive_path, header):
+        session_url = f"{endpoint}{drive_path}/{os.path.basename(file_path)}:/createUploadSession"
+        session = requests.post(session_url, headers=header).json()
+        with open(file_path, 'rb') as f:
+            total_size = os.path.getsize(file_path)
+            chunk_size = 327680
+            i = 0
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                start = i * chunk_size
+                end = start + len(chunk) - 1
+                headers = {
+                    'Content-Length': str(len(chunk)),
+                    'Content-Range': f"bytes {start}-{end}/{total_size}"
+                }
+                time.sleep(1)
+                response = requests.put(session['uploadUrl'], headers=headers, data=chunk).json()
+                i += 1
+        return response
 
-    - name: Fail if container update failed
-      fail:
-        msg: "Status app update failed"
-      when: output.rc != 0
+    try:
+        base_url = "https://graph.microsoft.com/v1.0"
+        header = create_token()
 
+        # Get site ID
+        site_url = f"{base_url}/sites?search={site}&&select=id"
+        site_data = requests.get(site_url, headers=header).json().get('value')
+        if not site_data:
+            return {"status": "error", "error": f"Site '{site}' not found"}
+        site_id = site_data[0]['id']
 
+        # Get library ID
+        list_url = f"{base_url}/sites/{site_id}/lists?$filter=displayName eq '{library}'&&select=id"
+        lib_data = requests.get(list_url, headers=header).json().get('value')
+        if not lib_data:
+            return {"status": "error", "error": f"Library '{library}' not found in site '{site}'"}
+        library_id = lib_data[0]['id']
 
+        # Prepare endpoint
+        endpoint = f"{base_url}/sites/{site_id}/lists/{library_id}/drive/root:/"
+        file_size = os.path.getsize(file_path)
 
-env
+        if file_size < 4 * 1024 * 1024:  # <4MB
+            result = upload_small_file(endpoint, file_path, drive_path, header)
+        else:
+            result = upload_large_file(endpoint, file_path, drive_path, header)
 
+        if "webUrl" in result:
+            return {"status": "success", "webUrl": result['webUrl']}
+        else:
+            return {"status": "error", "error": result.get("error", {}).get("message", "Unknown error")}
 
-[zabbix]
-ZABBIX_URL = {{ ZABBIX_URL }}
-ZABBIX_USER = {{ ZABBIX_USER }}
-ZABBIX_PASSWORD = {{ ZABBIX_PASSWORD }}
-
-[azure]
-AZURE_CLIENT_ID = {{ AZURE_CLIENT_ID }}
-AZURE_TENANT_ID = {{ AZURE_TENANT_ID }}
-AZURE_REDIRECT_URL = {{ AZURE_REDIRECT_URL }}
-AZURE_SECRET = {{ AZURE_SECRET }}
-
-[middleware]
-OPEN_PATHS={{ OPEN_PATHS | join(',') if OPEN_PATHS is iterable and OPEN_PATHS is not string else OPEN_PATHS }}
-HYBRID_PATHS={{ HYBRID_PATHS | join(',') if HYBRID_PATHS is iterable and HYBRID_PATHS is not string else HYBRID_PATHS }}
-
-[sentry]
-dsn={{ SENTRY_DSN }}
-release={{ SENTRY_RELEASE }}
-
-
-
-
-
---label "org.label-schema.version=${TAG}"
-
-.ansible-deployment:
-  stage: deployment
-  image: python:3.10
-  before_script:
-    - pip install ansible
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 
 
 
-script:
-  - >
-    ansible-playbook "$PLAYBOOK_PATH" -i "$INVENTORY"
-    --extra-vars "$ANSIBLE_EXTRA_VARS"
 
+from sharepoint_uploader import upload_file_to_sharepoint
+
+report_name = "June_Report"
+file_path = "/path/to/report.xlsx"
+drive_path = f"/Cloud_Scheduled_Reports/{report_name}"
+
+result = upload_file_to_sharepoint(file_path=file_path, site="Devops Drive", drive_path=drive_path)
+
+if result['status'] == 'success':
+    print("Upload Success:", result['webUrl'])
+else:
+    print("Upload Failed:", result['error'])
