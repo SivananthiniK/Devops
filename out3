@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+import os
+import time
+import argparse
+import requests
+import msal
+import logging
+from os.path import expanduser
+from ConfigParser import SafeConfigParser
+
+def upload_file_to_sharepoint(file_path, site="Devops Drive", drive_path="/Cloud_Scheduled_Reports/default", 
+                              library="Documents", link_type="blocksDownload"):
+    logger = logging.getLogger(__name__)
+    FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+    logging.basicConfig(format=FORMAT, level=logging.INFO)
+
+    configParser = SafeConfigParser()
+    DEFAULT_CREDENTIALS_FILE = os.path.join(expanduser("~"), '.company/credentials')
+    try:
+        from production import client_id, value
+    except Exception:
+        client_id = None
+        value = None
+
+    def getconfig(profile, variable, environment, default=""):
+        try:
+            configParser.read(os.environ.get('SHARED_CREDENTIALS_FILE', DEFAULT_CREDENTIALS_FILE))
+            return configParser.get(profile, variable)
+        except:
+            return os.environ.get(environment, default)
+
+    def create_token():
+        nonlocal client_id, value
+        if not client_id or not value:
+            client_id = getconfig('onedrive', 'client_id', 'ONEDRIVE_CLIENTID')
+            value = getconfig('onedrive', 'value', 'ONEDRIVE_VALUE')
+        authority = "https://login.microsoftonline.com/mitsogo.com"
+        scope = "https://graph.microsoft.com/.default"
+        app = msal.ConfidentialClientApplication(client_id, authority=authority, client_credential=value)
+        result = app.acquire_token_for_client(scopes=scope)
+        if 'access_token' in result:
+            return {
+                'Authorization': f"Bearer {result['access_token']}",
+                'Content-Type': "application/json"
+            }
+        else:
+            raise Exception("Token generation failed")
+
+    def upload_small_file(endpoint, file_path, drive_path, header):
+        with open(file_path, 'rb') as f:
+            url = f"{endpoint}{drive_path}/{os.path.basename(file_path)}:/content"
+            response = requests.put(url, headers=header, data=f).json()
+        return response
+
+    def upload_large_file(endpoint, file_path, drive_path, header):
+        session_url = f"{endpoint}{drive_path}/{os.path.basename(file_path)}:/createUploadSession"
+        session = requests.post(session_url, headers=header).json()
+        with open(file_path, 'rb') as f:
+            total_size = os.path.getsize(file_path)
+            chunk_size = 327680
+            i = 0
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                start = i * chunk_size
+                end = start + len(chunk) - 1
+                headers = {
+                    'Content-Length': str(len(chunk)),
+                    'Content-Range': f"bytes {start}-{end}/{total_size}"
+                }
+                time.sleep(1)
+                response = requests.put(session['uploadUrl'], headers=headers, data=chunk).json()
+                i += 1
+        return response
+
+    try:
+        base_url = "https://graph.microsoft.com/v1.0"
+        header = create_token()
+
+        site_url = f"{base_url}/sites?search={site}&&select=id"
+        site_data = requests.get(site_url, headers=header).json().get('value')
+        if not site_data:
+            return {"status": "error", "error": f"Site '{site}' not found"}
+        site_id = site_data[0]['id']
+
+        list_url = f"{base_url}/sites/{site_id}/lists?$filter=displayName eq '{library}'&&select=id"
+        lib_data = requests.get(list_url, headers=header).json().get('value')
+        if not lib_data:
+            return {"status": "error", "error": f"Library '{library}' not found in site '{site}'"}
+        library_id = lib_data[0]['id']
+
+        endpoint = f"{base_url}/sites/{site_id}/lists/{library_id}/drive/root:/"
+        file_size = os.path.getsize(file_path)
+
+        if file_size < 4 * 1024 * 1024:
+            result = upload_small_file(endpoint, file_path, drive_path, header)
+        else:
+            result = upload_large_file(endpoint, file_path, drive_path, header)
+
+        if "webUrl" in result:
+            return {"status": "success", "webUrl": result['webUrl']}
+        else:
+            return {"status": "error", "error": result.get("error", {}).get("message", "Unknown error")}
+
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+
+# ----------------------- Main Entry with CLI -----------------------
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Upload a file to SharePoint via Microsoft Graph API.")
+    parser.add_argument("--file_path", required=True, help="Full path to the file to upload.")
+    parser.add_argument("--site", default="Devops Drive", help="Name of the SharePoint site.")
+    parser.add_argument("--report_name", default="June_Report", help="Report name used in SharePoint path.")
+
+    args = parser.parse_args()
+    drive_path = f"/Cloud_Scheduled_Reports/{args.report_name}"
+
+    result = upload_file_to_sharepoint(file_path=args.file_path, site=args.site, drive_path=drive_path)
+
+    if result['status'] == 'success':
+        print("✅ Upload Success:", result['webUrl'])
+    else:
+        print("❌ Upload Failed:", result['error'])
+
+
+
+
+
+
+
+
+python upload_to_sharepoint.py \
+    --file_path "/absolute/path/to/report.xlsx" \
+    --site "Devops Drive" \
+    --report_name "June_Report"
