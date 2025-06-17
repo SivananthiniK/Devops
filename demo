@@ -167,3 +167,19 @@ if __name__ == '__main__':
                 print("sharing link:{}".format(result['webUrl']))
     except Exception as e:
         raise e
+
+
+
+
+
+
+--site "Devops Drive" --drive_path /Cloud_Scheduled_Reports/{report_name}
+
+
+
+
+sharepoint upload script input
+
+
+
+convert the script to a usable function that can be added to cloud repo
