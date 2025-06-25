@@ -1,112 +1,17 @@
-ChatGPT
-You said:
-Create a sample react fjango app in which the front end gets the date using mui and sends to the backend and it should be displayed in the console. 
-ChatGPT said:
-Here's a simple full-stack React + Django application where:
-
-Frontend: Uses React and MUI DatePicker to pick a date and send it to the backend.
-
-Backend: Django REST Framework receives the date and prints it to the console.
-
-🔧 Part 1: Backend (Django)
-1. Create Django project and app:
-django-admin startproject datepicker_project
-cd datepicker_project
-python manage.py startapp api
-2. Install Django REST Framework and CORS:
-pip install djangorestframework django-cors-headers
-3. settings.py (Enable CORS & REST):
-INSTALLED_APPS = [
-    ...
-    'rest_framework',
-    'corsheaders',
-    'api',
-]
-
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    ...
-]
-
-CORS_ALLOW_ALL_ORIGINS = True  # For testing only; restrict in production
-4. api/views.py:
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-
-@api_view(['POST'])
-def receive_date(request):
-    date = request.data.get('selectedDate')
-    print(f"Received Date: {date}")  # Logs to console
-    return Response({"message": "Date received", "date": date})
-5. api/urls.py:
-from django.urls import path
-from .views import receive_date
-
-urlpatterns = [
-    path('send-date/', receive_date, name='send-date'),
-]
-6. Add to datepicker_project/urls.py:
-from django.contrib import admin
-from django.urls import path, include
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
-]
-💻 Part 2: Frontend (React)
-1. Create React app:
-npx create-react-app datepicker-frontend
-cd datepicker-frontend
-npm install @mui/material @emotion/react @emotion/styled @mui/x-date-pickers axios
-2. App.js:
-import React, { useState } from 'react';
-import axios from 'axios';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { Button, Box } from '@mui/material';
-
-function App() {
-  const [selectedDate, setSelectedDate] = useState(null);
-
-  const handleSubmit = () => {
-    axios.post('http://localhost:8000/api/send-date/', {
-      selectedDate: selectedDate?.toISOString().split('T')[0]
-    })
-    .then(res => console.log(res.data))
-    .catch(err => console.error(err));
-  };
-
-  return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, width: 300, margin: 'auto', marginTop: 10 }}>
-        <DatePicker
-          label="Select a date"
-          value={selectedDate}
-          onChange={(newValue) => setSelectedDate(newValue)}
-        />
-        <Button variant="contained" onClick={handleSubmit}>Send Date</Button>
-      </Box>
-    </LocalizationProvider>
-  );
-}
-
-export default App;
-▶️ How to Run
-Backend:
-
-python manage.py runserver
-Frontend (in datepicker-frontend):
-
-npm start
-✅ Output
-You pick a date in the frontend.
-
-Click Send Date.
-
-The backend Django console logs:
-
-Received Date: 2025-06-20
-Let me know if you want this bundled into a GitHub repo or zip file.
-
-
+const handlePortalRequestSubmit = async (values) => {
+    try {
+      const response_role = await axios.post(`${process.env.REACT_APP_BACKEND}/api/taskmanager/portal-update/`, values, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + accessToken,
+        },
+      });
+      setShowSnackbar(false);
+      setActionStatus({
+        severity: 'success',
+        message: 'Portal update request is submitted'
+      })
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
