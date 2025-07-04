@@ -1,22 +1,150 @@
-In My bookings application : I have 4 components: 
-
-Edit an existing Meeting
-
-Book a new meeting
-
-Check Room Availability
-
-View Room calendars ( access only for admins ) - display rooms upon clicking that, booked host will be appeared in the calendar.
+Add the feature here :
+In the view rooms, after clicking any room card, it navigates to a calendar page. Now, add a button "Restrict " in the top right corner. After clicking that, it should ask for confirmation, after confirm, the field is_bookable in the Room model should be updated to false and the button should change to "Allow" ( along with confirmation dialog ). After confirming allow, is_bookable should be changed to true.
 
 
 
-Now My task is to add or update some feature :
 
-Add a new field in Roommodel to determine whether the particular room can be booked or not.
-Admins panel
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Grid,
+  Container,
+  CircularProgress,
+  Paper,
+  Button,
+} from '@mui/material';
+import RoomCard from '../components/RoomCard';
+import Calendar from '../components/Calendar';
+import axios from 'axios';
 
-UI to display all the rooms and edit room details to allow or restrict people from booking it
-Update get_all_rooms api or create a new api for handling the same
+function LoadingSpinner() {
+  return (
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      height="100vh"
+    >
+      <CircularProgress />
+    </Box>
+  );
+}
 
+const CalendarPage = ({idToken}) => {
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [rooms, setRooms] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-Give me ideas to do this. Give a simple idea that should work. Not more complicated.
+  useEffect(() => {
+    const fetchRooms = () => {
+      axios.get(`${process.env.REACT_APP_BACKEND_URL}/rooms/`, {
+        headers: {
+          "Content-Type": "application/json" ,
+          Authorization: 'Bearer '+ idToken,
+          token: 'Bearer '+ localStorage.getItem('jwtToken')
+        }
+      })
+      .then( response => {
+        const rooms = response.data.rooms;
+        setRooms(rooms);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching rooms:', err);
+        setError("You don't have permission to view this. For more information, Contact Devops Team");
+        setIsLoading(false);
+      })
+    };
+    fetchRooms();
+  }, []);
+
+  const handleRoomSelect = (room) => {
+    setSelectedRoom(room);
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+  if (error) {
+    return (
+      <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
+        <Typography color="error" gutterBottom>{error}</Typography>
+        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+          Retry
+        </Button>
+      </Paper>
+    );
+  }
+  return (
+    <Container
+      maxWidth="xl"
+      sx={{
+        height: 'calc(100vh - 48px)',
+        overflow: 'hidden',
+        mb: 6
+      }}
+    >
+      <Box
+        sx={{
+          py: 4,
+          height: '100%',
+          overflow: 'auto',
+          '&::-webkit-scrollbar': {
+            display: 'none'
+          },
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%'  
+        }}>
+          <Typography
+            variant="body1"
+            gutterBottom
+            sx={{
+              fontSize: '1.8rem',
+              fontWeight: 'bold',
+              mb: 3
+            }}
+          >
+            {selectedRoom
+              ? `${selectedRoom.displayName}`
+              : 'Select a Room'
+            }
+          </Typography>
+        </Box>
+
+        {!selectedRoom && (
+          <Grid container spacing={3}>
+            {rooms.map(room => (
+              <RoomCard
+                key={room.id}
+                room={room}
+                onClick={handleRoomSelect}
+                variant="calendar"
+              />
+            ))}
+          </Grid>
+        )}
+
+        {selectedRoom && (
+          <Box>
+            <Calendar
+              initialRoom={selectedRoom}
+              onBack={() => setSelectedRoom(null)}
+              idToken={idToken}
+            />
+          </Box>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
+export default CalendarPage;
