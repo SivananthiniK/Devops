@@ -1,210 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Grid,
-  Container,
-  CircularProgress,
-  Paper,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogTitle,
-} from '@mui/material';
-import RoomCard from '../components/RoomCard';
-import Calendar from '../components/Calendar';
-import axios from 'axios';
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Room
 
-function LoadingSpinner() {
-  return (
-    <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      height="100vh"
-    >
-      <CircularProgress />
-    </Box>
-  );
-}
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_bookable_status(request, room_id):
+    try:
+        room = Room.objects.get(id=room_id)
+    except Room.DoesNotExist:
+        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
 
-const CalendarPage = ({ idToken }) => {
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [rooms, setRooms] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+    # Optional: Check if user is admin (customize as needed)
+    if not request.user.is_staff:
+        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // 'restrict' or 'allow'
+    is_bookable = request.data.get('is_bookable')
+    if is_bookable is None:
+        return Response({'error': 'Missing "is_bookable" in request body'}, status=status.HTTP_400_BAD_REQUEST)
 
-  useEffect(() => {
-    const fetchRooms = () => {
-      axios.get(`${process.env.REACT_APP_BACKEND_URL}/rooms/`, {
+    room.is_bookable = is_bookable
+    room.save()
+
+    return Response({
+        'message': f'Room is_bookable status updated to {room.is_bookable}',
+        'room_id': room.id,
+        'is_bookable': room.is_bookable
+    }, status=status.HTTP_200_OK)
+
+
+
+
+
+from django.urls import path
+from .views import toggle_bookable_status
+
+urlpatterns = [
+    # other routes...
+    path('rooms/<int:room_id>/toggle_bookable/', toggle_bookable_status, name='toggle_bookable'),
+]
+
+
+
+
+const toggleRoomBooking = async (room, newStatus) => {
+  try {
+    const response = await axios.post(
+      `${process.env.REACT_APP_BACKEND_URL}/rooms/${room.id}/toggle_bookable/`,
+      { is_bookable: newStatus },
+      {
         headers: {
           "Content-Type": "application/json",
           Authorization: 'Bearer ' + idToken,
           token: 'Bearer ' + localStorage.getItem('jwtToken')
         }
-      })
-        .then(response => {
-          setRooms(response.data.rooms);
-          setIsLoading(false);
-        })
-        .catch(err => {
-          console.error('Error fetching rooms:', err);
-          setError("You don't have permission to view this. For more information, Contact Devops Team");
-          setIsLoading(false);
-        });
-    };
-    fetchRooms();
-  }, []);
-
-  const handleRoomSelect = (room) => {
-    setSelectedRoom(room);
-  };
-
-  const toggleRoomBooking = async (room, newStatus) => {
-    try {
-      const response = await axios.patch(
-        `${process.env.REACT_APP_BACKEND_URL}/rooms/${room.id}/`,
-        { is_bookable: newStatus },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: 'Bearer ' + idToken,
-            token: 'Bearer ' + localStorage.getItem('jwtToken')
-          }
-        }
-      );
-      setSelectedRoom({ ...room, is_bookable: newStatus }); // update local state
-    } catch (error) {
-      console.error('Failed to update booking status:', error);
-    }
-  };
-
-  const handleRestrictAllowClick = (action) => {
-    setConfirmAction(action);
-    setDialogOpen(true);
-  };
-
-  const handleDialogConfirm = () => {
-    if (confirmAction === 'restrict') {
-      toggleRoomBooking(selectedRoom, false);
-    } else {
-      toggleRoomBooking(selectedRoom, true);
-    }
-    setDialogOpen(false);
-    setConfirmAction(null);
-  };
-
-  const handleDialogCancel = () => {
-    setDialogOpen(false);
-    setConfirmAction(null);
-  };
-
-  if (isLoading) return <LoadingSpinner />;
-
-  if (error) {
-    return (
-      <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
-        <Typography color="error" gutterBottom>{error}</Typography>
-        <Button variant="contained" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
-          Retry
-        </Button>
-      </Paper>
+      }
     );
+    setSelectedRoom({ ...room, is_bookable: newStatus }); // update UI
+  } catch (error) {
+    console.error('Failed to toggle bookable status:', error);
   }
-
-  return (
-    <Container
-      maxWidth="xl"
-      sx={{
-        height: 'calc(100vh - 48px)',
-        overflow: 'hidden',
-        mb: 6
-      }}
-    >
-      <Box
-        sx={{
-          py: 4,
-          height: '100%',
-          overflow: 'auto',
-          '&::-webkit-scrollbar': { display: 'none' },
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}
-      >
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%'
-        }}>
-          <Typography
-            variant="body1"
-            gutterBottom
-            sx={{ fontSize: '1.8rem', fontWeight: 'bold', mb: 3 }}
-          >
-            {selectedRoom ? `${selectedRoom.displayName}` : 'Select a Room'}
-          </Typography>
-        </Box>
-
-        {!selectedRoom && (
-          <Grid container spacing={3}>
-            {rooms.map(room => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                onClick={handleRoomSelect}
-                variant="calendar"
-              />
-            ))}
-          </Grid>
-        )}
-
-        {selectedRoom && (
-          <>
-            {/* ⬇️ RESTRICT/ALLOW BUTTON */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button
-                variant="contained"
-                color={selectedRoom.is_bookable ? "error" : "success"}
-                onClick={() =>
-                  handleRestrictAllowClick(selectedRoom.is_bookable ? 'restrict' : 'allow')
-                }
-              >
-                {selectedRoom.is_bookable ? 'Restrict' : 'Allow'}
-              </Button>
-            </Box>
-
-            {/* ⬇️ CALENDAR DISPLAY */}
-            <Calendar
-              initialRoom={selectedRoom}
-              onBack={() => setSelectedRoom(null)}
-              idToken={idToken}
-            />
-          </>
-        )}
-
-        {/* ⬇️ CONFIRMATION DIALOG */}
-        <Dialog open={dialogOpen} onClose={handleDialogCancel}>
-          <DialogTitle>
-            Are you sure you want to {confirmAction === 'restrict' ? 'restrict' : 'allow'} this room?
-          </DialogTitle>
-          <DialogActions>
-            <Button onClick={handleDialogCancel}>Cancel</Button>
-            <Button
-              onClick={handleDialogConfirm}
-              variant="contained"
-              color={confirmAction === 'restrict' ? "error" : "success"}
-            >
-              Confirm
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </Container>
-  );
 };
 
-export default CalendarPage;
+
+
+
+
+
+
