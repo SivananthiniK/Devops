@@ -1,9 +1,3 @@
-Add the feature here :
-In the view rooms, after clicking any room card, it navigates to a calendar page. Now, add a button "Restrict " in the top right corner. After clicking that, it should ask for confirmation, after confirm, the field is_bookable in the Room model should be updated to false and the button should change to "Allow" ( along with confirmation dialog ). After confirming allow, is_bookable should be changed to true.
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -13,6 +7,9 @@ import {
   CircularProgress,
   Paper,
   Button,
+  Dialog,
+  DialogActions,
+  DialogTitle,
 } from '@mui/material';
 import RoomCard from '../components/RoomCard';
 import Calendar from '../components/Calendar';
@@ -31,31 +28,33 @@ function LoadingSpinner() {
   );
 }
 
-const CalendarPage = ({idToken}) => {
+const CalendarPage = ({ idToken }) => {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [rooms, setRooms] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // 'restrict' or 'allow'
+
   useEffect(() => {
     const fetchRooms = () => {
       axios.get(`${process.env.REACT_APP_BACKEND_URL}/rooms/`, {
         headers: {
-          "Content-Type": "application/json" ,
-          Authorization: 'Bearer '+ idToken,
-          token: 'Bearer '+ localStorage.getItem('jwtToken')
+          "Content-Type": "application/json",
+          Authorization: 'Bearer ' + idToken,
+          token: 'Bearer ' + localStorage.getItem('jwtToken')
         }
       })
-      .then( response => {
-        const rooms = response.data.rooms;
-        setRooms(rooms);
-        setIsLoading(false);
-      })
-      .catch(err => {
-        console.error('Error fetching rooms:', err);
-        setError("You don't have permission to view this. For more information, Contact Devops Team");
-        setIsLoading(false);
-      })
+        .then(response => {
+          setRooms(response.data.rooms);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error('Error fetching rooms:', err);
+          setError("You don't have permission to view this. For more information, Contact Devops Team");
+          setIsLoading(false);
+        });
     };
     fetchRooms();
   }, []);
@@ -64,9 +63,47 @@ const CalendarPage = ({idToken}) => {
     setSelectedRoom(room);
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  const toggleRoomBooking = async (room, newStatus) => {
+    try {
+      const response = await axios.patch(
+        `${process.env.REACT_APP_BACKEND_URL}/rooms/${room.id}/`,
+        { is_bookable: newStatus },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: 'Bearer ' + idToken,
+            token: 'Bearer ' + localStorage.getItem('jwtToken')
+          }
+        }
+      );
+      setSelectedRoom({ ...room, is_bookable: newStatus }); // update local state
+    } catch (error) {
+      console.error('Failed to update booking status:', error);
+    }
+  };
+
+  const handleRestrictAllowClick = (action) => {
+    setConfirmAction(action);
+    setDialogOpen(true);
+  };
+
+  const handleDialogConfirm = () => {
+    if (confirmAction === 'restrict') {
+      toggleRoomBooking(selectedRoom, false);
+    } else {
+      toggleRoomBooking(selectedRoom, true);
+    }
+    setDialogOpen(false);
+    setConfirmAction(null);
+  };
+
+  const handleDialogCancel = () => {
+    setDialogOpen(false);
+    setConfirmAction(null);
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
   if (error) {
     return (
       <Paper elevation={3} sx={{ p: 3, textAlign: 'center', maxWidth: 400, mx: 'auto', mt: 4 }}>
@@ -77,6 +114,7 @@ const CalendarPage = ({idToken}) => {
       </Paper>
     );
   }
+
   return (
     <Container
       maxWidth="xl"
@@ -91,9 +129,7 @@ const CalendarPage = ({idToken}) => {
           py: 4,
           height: '100%',
           overflow: 'auto',
-          '&::-webkit-scrollbar': {
-            display: 'none'
-          },
+          '&::-webkit-scrollbar': { display: 'none' },
           scrollbarWidth: 'none',
           msOverflowStyle: 'none'
         }}
@@ -102,21 +138,14 @@ const CalendarPage = ({idToken}) => {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          width: '100%'  
+          width: '100%'
         }}>
           <Typography
             variant="body1"
             gutterBottom
-            sx={{
-              fontSize: '1.8rem',
-              fontWeight: 'bold',
-              mb: 3
-            }}
+            sx={{ fontSize: '1.8rem', fontWeight: 'bold', mb: 3 }}
           >
-            {selectedRoom
-              ? `${selectedRoom.displayName}`
-              : 'Select a Room'
-            }
+            {selectedRoom ? `${selectedRoom.displayName}` : 'Select a Room'}
           </Typography>
         </Box>
 
@@ -134,14 +163,45 @@ const CalendarPage = ({idToken}) => {
         )}
 
         {selectedRoom && (
-          <Box>
+          <>
+            {/* ⬇️ RESTRICT/ALLOW BUTTON */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                color={selectedRoom.is_bookable ? "error" : "success"}
+                onClick={() =>
+                  handleRestrictAllowClick(selectedRoom.is_bookable ? 'restrict' : 'allow')
+                }
+              >
+                {selectedRoom.is_bookable ? 'Restrict' : 'Allow'}
+              </Button>
+            </Box>
+
+            {/* ⬇️ CALENDAR DISPLAY */}
             <Calendar
               initialRoom={selectedRoom}
               onBack={() => setSelectedRoom(null)}
               idToken={idToken}
             />
-          </Box>
+          </>
         )}
+
+        {/* ⬇️ CONFIRMATION DIALOG */}
+        <Dialog open={dialogOpen} onClose={handleDialogCancel}>
+          <DialogTitle>
+            Are you sure you want to {confirmAction === 'restrict' ? 'restrict' : 'allow'} this room?
+          </DialogTitle>
+          <DialogActions>
+            <Button onClick={handleDialogCancel}>Cancel</Button>
+            <Button
+              onClick={handleDialogConfirm}
+              variant="contained"
+              color={confirmAction === 'restrict' ? "error" : "success"}
+            >
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Container>
   );
