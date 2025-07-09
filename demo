@@ -1,71 +1,77 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from .models import Room
+const [locationFilter, setLocationFilter] = useState('');
+const filteredRooms = rooms.filter(room => {
+    const matchesLocation = !locationFilter || room.location === locationFilter;
+    const matchesSearch = !searchQuery || room.displayName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      roomStatusFilter === '' ||
+      (roomStatusFilter === 'bookable' && room.is_bookable) ||
+      (roomStatusFilter === 'restricted' && !room.is_bookable);
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def toggle_bookable_status(request, room_id):
-    try:
-        room = Room.objects.get(id=room_id)
-    except Room.DoesNotExist:
-        return Response({'error': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+    return matchesLocation && matchesSearch && matchesStatus;
+  });
 
-    # Optional: Check if user is admin (customize as needed)
-    if not request.user.is_staff:
-        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+<FormControl sx={{ minWidth: 180 }}>
+                  <InputLabel>Location</InputLabel>
+                  <theme.StyledSelect
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    label="Location"
+                    displayEmpty  
+                  >
 
-    is_bookable = request.data.get('is_bookable')
-    if is_bookable is None:
-        return Response({'error': 'Missing "is_bookable" in request body'}, status=status.HTTP_400_BAD_REQUEST)
+                    <MenuItem key="All" value="">All</MenuItem> 
+                    {uniqueLocations.map((loc, idx) => (
+                      <MenuItem key={idx} value={loc}>{loc}</MenuItem>
+                    ))}
+                  </theme.StyledSelect>
+                </FormControl>
 
-    room.is_bookable = is_bookable
-    room.save()
-
-    return Response({
-        'message': f'Room is_bookable status updated to {room.is_bookable}',
-        'room_id': room.id,
-        'is_bookable': room.is_bookable
-    }, status=status.HTTP_200_OK)
-
-
-
-
-
-from django.urls import path
-from .views import toggle_bookable_status
-
-urlpatterns = [
-    # other routes...
-    path('rooms/<int:room_id>/toggle_bookable/', toggle_bookable_status, name='toggle_bookable'),
-]
-
-
-
-
-const toggleRoomBooking = async (room, newStatus) => {
-  try {
-    const response = await axios.post(
-      `${process.env.REACT_APP_BACKEND_URL}/rooms/${room.id}/toggle_bookable/`,
-      { is_bookable: newStatus },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: 'Bearer ' + idToken,
-          token: 'Bearer ' + localStorage.getItem('jwtToken')
-        }
-      }
-    );
-    setSelectedRoom({ ...room, is_bookable: newStatus }); // update UI
-  } catch (error) {
-    console.error('Failed to toggle bookable status:', error);
-  }
-};
-
-
-
-
-
-
-
+                <FormControl sx={{ minWidth: 180 }}>
+                  <InputLabel>Room Status</InputLabel>
+                  <theme.StyledSelect
+                    value={roomStatusFilter}
+                    onChange={(e) => setRoomStatusFilter(e.target.value)}
+                    label="Room Status"
+                  >
+                    <MenuItem value="">All</MenuItem> 
+                    <MenuItem value="bookable">Bookable</MenuItem>
+                    <MenuItem value="restricted">Restricted</MenuItem>
+                  </theme.StyledSelect>
+                </FormControl>
+                
+                <TextField
+                variant="outlined"
+                placeholder="Search rooms by name"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                size="small"
+                sx={{
+                  flex: 1,
+                  maxWidth: 400,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '50px',
+                  },
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                />
+                {(locationFilter!=='' || roomStatusFilter!=='' || searchQuery) && (
+                
+                <theme.StyledButton  sx={{fontSize: '0.8rem',fontWeight: 600, backgroundColor:'white' ,color: "#3f50b5",
+                  '&:hover': {
+                  backgroundColor: 'white',
+                  transform: 'translateY(0px)',
+                  boxShadow: '0 8px 20px white',
+                }
+                }}
+                 onClick={() => {
+                  setLocationFilter('')
+                  setRoomStatusFilter('')
+                  setSearchQuery('')
+                }}>Clear Filter</theme.StyledButton>
+              )}
