@@ -1,77 +1,39 @@
-const [locationFilter, setLocationFilter] = useState('');
-const filteredRooms = rooms.filter(room => {
-    const matchesLocation = !locationFilter || room.location === locationFilter;
-    const matchesSearch = !searchQuery || room.displayName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      roomStatusFilter === '' ||
-      (roomStatusFilter === 'bookable' && room.is_bookable) ||
-      (roomStatusFilter === 'restricted' && !room.is_bookable);
+stages:
+  - read_file
 
-    return matchesLocation && matchesSearch && matchesStatus;
-  });
+read_file_job:
+  stage: read_file
+  image: python:3.10  # or any image with Ansible or install it manually
+  before_script:
+    - apt update && apt install -y ansible
+  script:
+    - echo "Running Ansible playbook with path: $FILE_PATH"
+    - ansible-playbook read_file_playbook.yml --extra-vars "file_path=$FILE_PATH"
 
-<FormControl sx={{ minWidth: 180 }}>
-                  <InputLabel>Location</InputLabel>
-                  <theme.StyledSelect
-                    value={locationFilter}
-                    onChange={(e) => setLocationFilter(e.target.value)}
-                    label="Location"
-                    displayEmpty  
-                  >
 
-                    <MenuItem key="All" value="">All</MenuItem> 
-                    {uniqueLocations.map((loc, idx) => (
-                      <MenuItem key={idx} value={loc}>{loc}</MenuItem>
-                    ))}
-                  </theme.StyledSelect>
-                </FormControl>
 
-                <FormControl sx={{ minWidth: 180 }}>
-                  <InputLabel>Room Status</InputLabel>
-                  <theme.StyledSelect
-                    value={roomStatusFilter}
-                    onChange={(e) => setRoomStatusFilter(e.target.value)}
-                    label="Room Status"
-                  >
-                    <MenuItem value="">All</MenuItem> 
-                    <MenuItem value="bookable">Bookable</MenuItem>
-                    <MenuItem value="restricted">Restricted</MenuItem>
-                  </theme.StyledSelect>
-                </FormControl>
-                
-                <TextField
-                variant="outlined"
-                placeholder="Search rooms by name"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                size="small"
-                sx={{
-                  flex: 1,
-                  maxWidth: 400,
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '50px',
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-                />
-                {(locationFilter!=='' || roomStatusFilter!=='' || searchQuery) && (
-                
-                <theme.StyledButton  sx={{fontSize: '0.8rem',fontWeight: 600, backgroundColor:'white' ,color: "#3f50b5",
-                  '&:hover': {
-                  backgroundColor: 'white',
-                  transform: 'translateY(0px)',
-                  boxShadow: '0 8px 20px white',
-                }
-                }}
-                 onClick={() => {
-                  setLocationFilter('')
-                  setRoomStatusFilter('')
-                  setSearchQuery('')
-                }}>Clear Filter</theme.StyledButton>
-              )}
+---
+- name: Read file from path
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Check if the file exists
+      stat:
+        path: "{{ file_path }}"
+      register: file_status
+
+    - name: Print file content
+      when: file_status.stat.exists
+      shell: cat "{{ file_path }}"
+      register: file_content
+      changed_when: false
+
+    - name: Display file content
+      when: file_status.stat.exists
+      debug:
+        msg: "{{ file_content.stdout }}"
+
+    - name: Fail if file does not exist
+      when: not file_status.stat.exists
+      fail:
+        msg: "File not found at {{ file_path }}"
