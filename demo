@@ -1,156 +1,150 @@
-envfile.env
-
 [cloud.hexnode.com]
-token_old=<cicd variable>
-token=<cicd variable>
-portal_creation_token=<cicd variable>
-paths=
+token_old=dummy_old_token
+token=dummy_token
+portal_creation_token=dummy_creation_token
+paths=/dummy/path/cloud
 
 [devops.hexnode.com]
-token=<cicd variable>
-paths=
+token=dummy_devops_token
+paths=/dummy/path/devops
 
 [iam.mitsogo.com]
-token=<cicd variable>
-paths=
+token=dummy_iam_token
+paths=/dummy/path/iam
 
 [assist.mitsogo.com]
-token=<cicd variable>
+token=dummy_assist_token
 
 [azure]
-client_id=
-client_secret=<cicd variable>
+client_id=dummy_azure_client_id
+client_secret=dummy_azure_client_secret
 
 [hubspot]
-token=<cicd variable>
+token=dummy_hubspot_token
 
 [zendesk]
-token=<cicd variable>
-portal= 
+token=dummy_zendesk_token
+portal=dummy_zendesk_portal
 
 [taskmanagement_zendesk]
-SUBDOMAIN = 
-EMAIL = <cicd variable>
-TOKEN = <cicd variable>
-ASSIGNEES = []
+SUBDOMAIN=dummy_task_subdomain
+EMAIL=dummy_task_email@example.com
+TOKEN=dummy_task_token
+ASSIGNEES=["assignee1", "assignee2"]
 
 [devops_mitsogo_zendesk]
-SUBDOMAIN = 
-EMAIL = <cicd variable>
-TOKEN = <cicd variable>
-ASSIGNEES = []
+SUBDOMAIN=dummy_devops_subdomain
+EMAIL=dummy_devops_email@example.com
+TOKEN=dummy_devops_token
+ASSIGNEES=["assigneeA", "assigneeB"]
 
 [devops_monitor_zendesk]
-subdomain=
-email=<cicd variable>
-token=<cicd variable>
-assignees=[]
+subdomain=dummy_monitor_subdomain
+email=dummy_monitor_email@example.com
+token=dummy_monitor_token
+assignees=["monitor1", "monitor2"]
 
 [updater.mitsogo.com]
-token=<cicd variable>
+token=dummy_updater_token
 
 [licence.hexnode.com]
-token=<cicd variable>
+token=dummy_licence_token
 
 [firebase.google.com]
-token=<cicd variable>
-databaseURL=
-storageBucket=
+token=dummy_firebase_token
+databaseURL=https://dummy-firebase.firebaseio.com
+storageBucket=dummy-firebase.appspot.com
 
 [pdf_upload_s3]
-s3_aws_access_key_id=<cicd variable>
-s3_aws_secret_access_key=<cicd variable>
-pdf_upload_path_in_s3=
-bucket_name=
-profile_name=
+s3_aws_access_key_id=AKIAEXAMPLEKEY
+s3_aws_secret_access_key=dummyAwsSecretKey123
+pdf_upload_path_in_s3=/pdf/uploads
+bucket_name=dummy-pdf-bucket
+profile_name=default
 
 [mail]
-from_mail=<cicd variable>
-mail_password=<cicd variable>
+from_mail=no-reply@example.com
+mail_password=dummy_mail_password
 
 [microsoft_authentication]
-tenant_id=
-client_id=
-client_secret=<cicd variable>
-redirect_uri=
+tenant_id=dummy_tenant_id
+client_id=dummy_ms_client_id
+client_secret=dummy_ms_client_secret
+redirect_uri=https://example.com/redirect
 
 [onedrive_account]
-tenent=
-client_id=
-secret=<cicd variable>
-onedrive_user=<cicd variable>
-
+tenent=dummy_tenant_name
+client_id=dummy_onedrive_client_id
+secret=dummy_onedrive_secret
+onedrive_user=onedrive_user@example.com
 
 [assets.mitsogo.com]
-token= <cicd variable>
+token=dummy_assets_token
 
 [email_server]
-EMAIL_HOST=
-EMAIL_PORT=
-EMAIL_HOST_USER=<cicd variable>
-EMAIL_HOST_PASSWORD=<cicd variable>
-EMAIL_HOST_SENDER=<cicd variable>
-
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=mailer@example.com
+EMAIL_HOST_PASSWORD=dummy_email_password
+EMAIL_HOST_SENDER=sender@example.com
 
 [downloads_key]
-AWS_ACCESS_KEY_ID = <cicd variable>
-AWS_SECRET_ACCESS_KEY = <cicd variable>
-
+AWS_ACCESS_KEY_ID=AKIAFAKEACCESSKEY
+AWS_SECRET_ACCESS_KEY=dummyDownloadsSecret
 
 [sentry]
-dsn=<cicd variable>
-release=
+dsn=https://dummyPublic@sentry.example.com/12345
+release=1.0.0-dummy
 
 [jenkins]
-username=<cicd variable>
-api_token=<cicd variable>
-server_url=
+username=jenkins_user
+api_token=jenkins_api_token_123
+server_url=https://jenkins.example.com
 
 [cart_mdm_portal_info]
-job_name=
-job_token=<cicd variable>
+job_name=dummy_cart_job
+job_token=token123
 
 [devops_cart_mdm_update]
-job_name=
-job_token= <cicd variable>
+job_name=cart_update_job
+job_token=update_token_456
 
 [portalupdate_jenkins]
-username=<cicd variable>
-api_token=<cicd variable>
-job_url=
-job_name=
-job_token= <cicd variable>
+username=jenkins_portal_user
+api_token=portal_api_token
+job_url=https://jenkins.example.com/job/portalupdate
+job_name=portal_update_job
+job_token=portal_token_789
 
 [aws]
-aws_access_key_id=<cicd variable>
-aws_secret_access_key=<cicd variable>
-s3_bucket_name=
-s3_dir_path=
+aws_access_key_id=AKIAEXAMPLEAWS
+aws_secret_access_key=awsSecretKey987
+s3_bucket_name=dummy-bucket
+s3_dir_path=/example/path
 
 [middleware]
-open_paths=
-token_paths=
-
+open_paths=/api/public
+token_paths=/api/secure
 
 [urls]
-SERVER_NAME=
-HEXCON_SUBSCRIBERS_URL=
-SUBSCRIPTION_URL=
-URL_FOR_GETTING_BUILD_NAMES=
-CRM_DEMO_ACTION_URL=
-CRM_REMOTE_ACTION_URL=
-BULK_PURGE_ACTION= 
-PURGE_ACTION_URL=
-REQUEST_FOR_REJECT_TRIAL_CREATION_FROM_CLOUD=
-ADD_DOMAIN_BLACKLIST_URL=
-ACTION_HISTORY_URL=
-TECH_URL=
-GRAB_URL=
-REQUEST_FOR_TRIAL_PORTALS_FROM_CLOUD=
-BLACKLIST_URL=
-RESELLER_PORTAL_URL=
-ASSET_MANAGEMENT= 
-SEARCH_PURGE_LIST_PORTAL_URL=
-PORTAL_EXISTENCE=
-PORTAL_DATA_SYNC=
-EXPIRED_PORTAL_CLOUD_URL=
+SERVER_NAME=https://server.example.com
+HEXCON_SUBSCRIBERS_URL=https://example.com/subscribers
+SUBSCRIPTION_URL=https://example.com/subscribe
+URL_FOR_GETTING_BUILD_NAMES=https://example.com/builds
+CRM_DEMO_ACTION_URL=https://example.com/crm/demo
+CRM_REMOTE_ACTION_URL=https://example.com/crm/remote
+BULK_PURGE_ACTION=https://example.com/purge/bulk
+PURGE_ACTION_URL=https://example.com/purge
+REQUEST_FOR_REJECT_TRIAL_CREATION_FROM_CLOUD=https://example.com/cloud/reject-trial
+ADD_DOMAIN_BLACKLIST_URL=https://example.com/blacklist/add
+ACTION_HISTORY_URL=https://example.com/history
+TECH_URL=https://example.com/tech
+GRAB_URL=https://example.com/grab
+REQUEST_FOR_TRIAL_PORTALS_FROM_CLOUD=https://example.com/trials
+BLACKLIST_URL=https://example.com/blacklist
+RESELLER_PORTAL_URL=https://example.com/reseller
+ASSET_MANAGEMENT=https://example.com/assets
+SEARCH_PURGE_LIST_PORTAL_URL=https://example.com/search/purge
+PORTAL_EXISTENCE=https://example.com/portal/existence
+PORTAL_DATA_SYNC=https://example.com/portal/sync
+EXPIRED_PORTAL_CLOUD_URL=https://example.com/cloud/expired
