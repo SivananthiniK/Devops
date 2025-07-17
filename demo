@@ -1,39 +1,156 @@
-stages:
-  - read_file
+envfile.env
 
-read_file_job:
-  stage: read_file
-  image: python:3.10  # or any image with Ansible or install it manually
-  before_script:
-    - apt update && apt install -y ansible
-  script:
-    - echo "Running Ansible playbook with path: $FILE_PATH"
-    - ansible-playbook read_file_playbook.yml --extra-vars "file_path=$FILE_PATH"
+[cloud.hexnode.com]
+token_old=<cicd variable>
+token=<cicd variable>
+portal_creation_token=<cicd variable>
+paths=
+
+[devops.hexnode.com]
+token=<cicd variable>
+paths=
+
+[iam.mitsogo.com]
+token=<cicd variable>
+paths=
+
+[assist.mitsogo.com]
+token=<cicd variable>
+
+[azure]
+client_id=
+client_secret=<cicd variable>
+
+[hubspot]
+token=<cicd variable>
+
+[zendesk]
+token=<cicd variable>
+portal= 
+
+[taskmanagement_zendesk]
+SUBDOMAIN = 
+EMAIL = <cicd variable>
+TOKEN = <cicd variable>
+ASSIGNEES = []
+
+[devops_mitsogo_zendesk]
+SUBDOMAIN = 
+EMAIL = <cicd variable>
+TOKEN = <cicd variable>
+ASSIGNEES = []
+
+[devops_monitor_zendesk]
+subdomain=
+email=<cicd variable>
+token=<cicd variable>
+assignees=[]
+
+[updater.mitsogo.com]
+token=<cicd variable>
+
+[licence.hexnode.com]
+token=<cicd variable>
+
+[firebase.google.com]
+token=<cicd variable>
+databaseURL=
+storageBucket=
+
+[pdf_upload_s3]
+s3_aws_access_key_id=<cicd variable>
+s3_aws_secret_access_key=<cicd variable>
+pdf_upload_path_in_s3=
+bucket_name=
+profile_name=
+
+[mail]
+from_mail=<cicd variable>
+mail_password=<cicd variable>
+
+[microsoft_authentication]
+tenant_id=
+client_id=
+client_secret=<cicd variable>
+redirect_uri=
+
+[onedrive_account]
+tenent=
+client_id=
+secret=<cicd variable>
+onedrive_user=<cicd variable>
 
 
+[assets.mitsogo.com]
+token= <cicd variable>
 
----
-- name: Read file from path
-  hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: Check if the file exists
-      stat:
-        path: "{{ file_path }}"
-      register: file_status
+[email_server]
+EMAIL_HOST=
+EMAIL_PORT=
+EMAIL_HOST_USER=<cicd variable>
+EMAIL_HOST_PASSWORD=<cicd variable>
+EMAIL_HOST_SENDER=<cicd variable>
 
-    - name: Print file content
-      when: file_status.stat.exists
-      shell: cat "{{ file_path }}"
-      register: file_content
-      changed_when: false
 
-    - name: Display file content
-      when: file_status.stat.exists
-      debug:
-        msg: "{{ file_content.stdout }}"
+[downloads_key]
+AWS_ACCESS_KEY_ID = <cicd variable>
+AWS_SECRET_ACCESS_KEY = <cicd variable>
 
-    - name: Fail if file does not exist
-      when: not file_status.stat.exists
-      fail:
-        msg: "File not found at {{ file_path }}"
+
+[sentry]
+dsn=<cicd variable>
+release=
+
+[jenkins]
+username=<cicd variable>
+api_token=<cicd variable>
+server_url=
+
+[cart_mdm_portal_info]
+job_name=
+job_token=<cicd variable>
+
+[devops_cart_mdm_update]
+job_name=
+job_token= <cicd variable>
+
+[portalupdate_jenkins]
+username=<cicd variable>
+api_token=<cicd variable>
+job_url=
+job_name=
+job_token= <cicd variable>
+
+[aws]
+aws_access_key_id=<cicd variable>
+aws_secret_access_key=<cicd variable>
+s3_bucket_name=
+s3_dir_path=
+
+[middleware]
+open_paths=
+token_paths=
+
+
+[urls]
+SERVER_NAME=
+HEXCON_SUBSCRIBERS_URL=
+SUBSCRIPTION_URL=
+URL_FOR_GETTING_BUILD_NAMES=
+CRM_DEMO_ACTION_URL=
+CRM_REMOTE_ACTION_URL=
+BULK_PURGE_ACTION= 
+PURGE_ACTION_URL=
+REQUEST_FOR_REJECT_TRIAL_CREATION_FROM_CLOUD=
+ADD_DOMAIN_BLACKLIST_URL=
+ACTION_HISTORY_URL=
+TECH_URL=
+GRAB_URL=
+REQUEST_FOR_TRIAL_PORTALS_FROM_CLOUD=
+BLACKLIST_URL=
+RESELLER_PORTAL_URL=
+ASSET_MANAGEMENT= 
+SEARCH_PURGE_LIST_PORTAL_URL=
+PORTAL_EXISTENCE=
+PORTAL_DATA_SYNC=
+EXPIRED_PORTAL_CLOUD_URL=
