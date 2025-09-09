@@ -1,136 +1,93 @@
-const {
-  fetchAllPages: fetchWordpressData,
-} = usePaginatedFetch({
-  token,
-  endpoint: `${process.env.REACT_APP_BACKEND}/api/services/wordpress/${Location}/sync-and-list-employees/`,
-  pageSize: 100,
-  formatData: formatUserData,
-  setData,
-  setCount: () => {},
-  setLoading,
-  setError,
-});
+from django.utils import timezone
+from django.db import transaction
 
-// Refactored realtime fetch function
-const handleGetRealtime = async () => {
-  setRealtimeLoading(true);
-  setRealtimeDisabled(true);
-  setRealtimeStatus({ message: 'Fetching data...', color: 'info' });
+def sync_users(self):
+    try:
+        wordpress_users = self.get_users_from_service()
+        existing_emails = [user['user_email'] for user in wordpress_users]
+        count_users = len(existing_emails)
+        logger.info(f"Count : {count_users}")
 
-  try {
-    await Promise.race([
-      fetchWordpressData(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 60000)
-      ),
-    ]);
+        if count_users == 0:
+            logger.warning("No users found. Skipping cost per user calculation.")
+            cost_per_user = 0
+        else:
+            cost_per_user = 300 / count_users
 
-    setRealtimeStatus({ message: 'Data fetched successfully', color: 'success' });
-    setTimeout(() => {
-      setRealtimeStatus(null);
-    }, 1000);
-    setRealtimeDisabled(false);
-  } catch (error) {
-    console.error("Failed to fetch data in realtime", error);
-    setError(error.message);
-    setRealtimeStatus({ message: 'Unable to fetch data', color: 'error' });
-    setTimeout(() => {
-      setRealtimeStatus(null);
-      setRealtimeDisabled(false);
-    }, 1000);
-    setRealtimeLoading(false);
-  } finally {
-    setRealtimeLoading(false);
-    setTimeout(() => setRealtimeDisabled(false), 15000);
-  }
-};
+        # Deactivate users not in WordPress list
+        PermissionMapper.objects.filter(
+            service=self.service
+        ).exclude(
+            employee__email__in=existing_emails
+        ).update(
+            active=False,
+            deactivate_time=timezone.now()
+        )
 
+        # Prepare employees to bulk create/update
+        employees_to_create = []
+        employees_to_update = []
+        existing_employees = {
+            e.email: e for e in Employee.objects.filter(email__in=existing_emails)
+        }
 
-elif operation == "sync-and-list-employees":
-                try:
-                    service_class_instance.update_users()
-                    eventLogger(
-                        event_type='service_realtime',
-                        user=request.employee,
-                        status=True,
-                        entity_name=service_name,
-                        details='Employees in service: %s for service profile: %s has been successfully updated realtime' % (service_name, service_profile)
-                    )
-                    logger.info("Employees in service: %s for service profile: %s has been successfully updated realtime" % (service_name, service_profile))
+        for user in wordpress_users:
+            email = user['user_email']
+            display_name = user['display_name']
 
-                    employees = PermissionMapper.objects.filter(service=service)
+            if email in existing_employees:
+                emp = existing_employees[email]
+                emp.display_name = display_name
+                employees_to_update.append(emp)
+            else:
+                employees_to_create.append(Employee(email=email, display_name=display_name))
 
-                    # Check if pagination is disabled via query param
-                    paginate = request.GET.get('paginate', 'true').lower() != 'false'
+        # Bulk operations (all inside transaction for safety)
+        with transaction.atomic():
+            if employees_to_create:
+                Employee.objects.bulk_create(employees_to_create, batch_size=500)
 
-                    if paginate:
-                        paginator = CustomPagination()
-                        paginated_employees = paginator.paginate_queryset(employees, request)
-                        serialized_data = PermissionMapperSerializer(paginated_employees, many=True)
-                        logger.info("Completed service_operations view: Paginated employee records retrieved.")
-                        return paginator.get_paginated_response(serialized_data.data)
-                    else:
-                        serialized_data = PermissionMapperSerializer(employees, many=True)
-                        logger.info("Completed service_operations view: All employee records retrieved without pagination.")
-                        return JsonResponse(serialized_data.data, safe=False, status=status.HTTP_200_OK)
+            if employees_to_update:
+                Employee.objects.bulk_update(employees_to_update, ['display_name'], batch_size=500)
 
-                except Exception as e:
-                    logger.error(f"Failed to sync realtime data for {service_name}, Error: {e}")
-                    return JsonResponse({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Bulk PermissionMapper update
+        permission_mappers_to_create = []
+        existing_mappers = {
+            p.employee.email: p for p in PermissionMapper.objects.filter(
+                service=self.service, employee__email__in=existing_emails
+            )
+        }
 
-def get_users_from_service(self):
-                    url = f"{self.api_url}/wp-json/sasso/v1/users"
-                    page=1
-                    # logger.info(f"response: {response}")
-                    users_list=[]
-                    while True:
-                        params = {'context':'edit','per_page': 1000, 'page': page}
-                        response = requests.get(url, auth=(self.username, self.password),params=params)
-                        # logger.info(response.status_code)
-                        if response.status_code == 200:
-                            data = response.json()
-                            users = data.get("users", [])
-                            total_pages = data.get("total_pages", 1)
-                            if not users:
-                                break
-                            for user in users:
-                                users_list.append(user)
-                            logger.info(f"Page: {page}")
-                            logger.info(f"Total Pages: {total_pages}")
-                            if page >= total_pages:
-                                break
-                            page +=1
-                        else:
-                            logger.error(response.status_code)
-                            logger.error(f"Failed to retrieve users. Status code: {response.status_code}")
-                            break
-                    logger.info("Returning user list")
-                    return users_list
+        for user in wordpress_users:
+            email = user['user_email']
+            employee = existing_employees.get(email) or next(
+                (e for e in employees_to_create if e.email == email), None
+            )
 
-                    def sync_users(self):
-                    try:
-                        wordpress_users = self.get_users_from_service()
-                        #logger.info(f"response: {wordpress_users}")
-                        existing_emails = [user['user_email'] for user in wordpress_users]
-                        count_users = len(existing_emails)
-                        logger.info(f"Count : {count_users}")
-                        if count_users==0:
-                            logger.warning("No users found. Skipping cost per user calculation.")
-                            cost_per_user = 0
-                        else:
-                            cost_per_user = 300/count_users
-                        # Service.objects.filter(service=self.service)
-                        PermissionMapper.objects.filter(service=self.service).exclude(employee__email__in=existing_emails).update(active=False, deactivate_time=datetime.now())
-                        for user in wordpress_users:
-                            employee = self._update_employee(user['user_email'], user['display_name'])
-                            self._update_permission_mapper(employee, user)
-                        logger.info("Sync successful!")
-                    except Exception as e:
-                        logger.error(f"Error syncing users for service {self.service_name}: {e}", exc_info=True)
-                        raise
- 
-                        
+            if email not in existing_mappers and employee:
+                permission_mappers_to_create.append(
+                    PermissionMapper(employee=employee, service=self.service, active=True)
+                )
+            else:
+                mapper = existing_mappers.get(email)
+                if mapper:
+                    mapper.active = True
+                    mapper.deactivate_time = None
 
-Here there are 5000+ data . so ther 504 server timeout occurs and the data are nit synced. Make it optimized, reduce the api calls and the time out should not occur.
-Note: modify in the same functions and no new functions.
-            
+        with transaction.atomic():
+            if permission_mappers_to_create:
+                PermissionMapper.objects.bulk_create(permission_mappers_to_create, batch_size=500)
+
+            if existing_mappers:
+                PermissionMapper.objects.bulk_update(
+                    existing_mappers.values(),
+                    ['active', 'deactivate_time'],
+                    batch_size=500
+                )
+
+    except Exception as e:
+        logger.error(
+            f"Error syncing users for service {self.service_name}: {e}",
+            exc_info=True
+        )
+        raise
