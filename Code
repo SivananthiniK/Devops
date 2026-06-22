@@ -2,19 +2,21 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-# ==========================
-# Zoom Credentials
-# ==========================
+# =====================================
+# ZOOM CONFIGURATION
+# =====================================
+
 ACCOUNT_ID = "YOUR_ACCOUNT_ID"
 CLIENT_ID = "YOUR_CLIENT_ID"
 CLIENT_SECRET = "YOUR_CLIENT_SECRET"
 
-# Meeting host email
-ZOOM_USER_EMAIL = "host@example.com"
+# Leave blank initially
+HOST_EMAIL = "YOUR_ZOOM_EMAIL"
 
-# ==========================
-# Get Access Token
-# ==========================
+# =====================================
+# ACCESS TOKEN
+# =====================================
+
 def get_access_token():
     url = "https://zoom.us/oauth/token"
 
@@ -27,15 +29,76 @@ def get_access_token():
         auth=(CLIENT_ID, CLIENT_SECRET)
     )
 
-    response.raise_for_status()
+    if response.status_code != 200:
+        print("Token Error:")
+        print(response.text)
+        return None
+
     return response.json()["access_token"]
 
 
-# ==========================
-# Create Meeting
-# ==========================
-def create_meeting(token):
-    url = f"https://api.zoom.us/v2/users/{ZOOM_USER_EMAIL}/meetings"
+# =====================================
+# GET USERS
+# =====================================
+
+def get_users(token):
+    print("\n===== USERS =====")
+
+    url = "https://api.zoom.us/v2/users?page_size=300"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    print("Status:", response.status_code)
+
+    if response.status_code != 200:
+        print(response.text)
+        return None
+
+    data = response.json()
+
+    for user in data.get("users", []):
+        print("-" * 50)
+        print("ID    :", user.get("id"))
+        print("Email :", user.get("email"))
+        print("Name  :", user.get("first_name"), user.get("last_name"))
+
+    return data
+
+
+# =====================================
+# GET USER BY EMAIL
+# =====================================
+
+def get_user_by_email(token, email):
+    url = f"https://api.zoom.us/v2/users/{email}"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    print("\nUser Lookup Status:", response.status_code)
+
+    if response.status_code != 200:
+        print(response.text)
+        return None
+
+    return response.json()
+
+
+# =====================================
+# CREATE MEETING
+# =====================================
+
+def create_meeting(token, user_id):
+    print("\n===== CREATING MEETING =====")
+
+    url = f"https://api.zoom.us/v2/users/{user_id}/meetings"
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -47,19 +110,18 @@ def create_meeting(token):
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     payload = {
-        "topic": "API Created Meeting",
+        "topic": "Test Meeting API",
         "type": 2,
         "start_time": start_time,
         "duration": 60,
         "timezone": "UTC",
-        "agenda": "Meeting created using Zoom API",
+        "agenda": "Created via API",
         "settings": {
             "host_video": True,
             "participant_video": True,
             "join_before_host": False,
             "waiting_room": True,
-            "audio": "both",
-            "auto_recording": "none"
+            "audio": "both"
         }
     }
 
@@ -69,21 +131,27 @@ def create_meeting(token):
         json=payload
     )
 
-    response.raise_for_status()
+    print("Status:", response.status_code)
 
-    meeting = response.json()
+    if response.status_code not in [200, 201]:
+        print(response.text)
+        return None
 
-    print("\n========== CREATED MEETING ==========")
-    print(json.dumps(meeting, indent=4))
+    data = response.json()
 
-    return meeting["id"]
+    print(json.dumps(data, indent=4))
+
+    return data["id"]
 
 
-# ==========================
-# Get All Meetings
-# ==========================
-def get_meetings(token):
-    url = f"https://api.zoom.us/v2/users/{ZOOM_USER_EMAIL}/meetings"
+# =====================================
+# LIST MEETINGS
+# =====================================
+
+def get_meetings(token, user_id):
+    print("\n===== USER MEETINGS =====")
+
+    url = f"https://api.zoom.us/v2/users/{user_id}/meetings"
 
     headers = {
         "Authorization": f"Bearer {token}"
@@ -91,28 +159,25 @@ def get_meetings(token):
 
     response = requests.get(url, headers=headers)
 
-    response.raise_for_status()
+    print("Status:", response.status_code)
 
-    meetings = response.json()
+    if response.status_code != 200:
+        print("ERROR:")
+        print(response.text)
+        return
 
-    print("\n========== ALL MEETINGS ==========")
+    data = response.json()
 
-    for meeting in meetings.get("meetings", []):
-        print("-" * 60)
-        print("Meeting ID :", meeting.get("id"))
-        print("Topic      :", meeting.get("topic"))
-        print("Type       :", meeting.get("type"))
-        print("Start Time :", meeting.get("start_time"))
-        print("Timezone   :", meeting.get("timezone"))
-        print("Join URL   :", meeting.get("join_url"))
-
-    return meetings.get("meetings", [])
+    print(json.dumps(data, indent=4))
 
 
-# ==========================
-# Get Meeting Details
-# ==========================
+# =====================================
+# MEETING DETAILS
+# =====================================
+
 def get_meeting_details(token, meeting_id):
+    print("\n===== MEETING DETAILS =====")
+
     url = f"https://api.zoom.us/v2/meetings/{meeting_id}"
 
     headers = {
@@ -121,55 +186,80 @@ def get_meeting_details(token, meeting_id):
 
     response = requests.get(url, headers=headers)
 
-    response.raise_for_status()
+    print("Status:", response.status_code)
 
-    details = response.json()
+    if response.status_code != 200:
+        print(response.text)
+        return
 
-    print("\n========== MEETING DETAILS ==========")
+    data = response.json()
 
-    print("Meeting ID        :", details.get("id"))
-    print("Topic             :", details.get("topic"))
-    print("Agenda            :", details.get("agenda"))
-    print("Status            :", details.get("status"))
-    print("Start Time        :", details.get("start_time"))
-    print("Duration          :", details.get("duration"))
-    print("Timezone          :", details.get("timezone"))
-    print("Join URL          :", details.get("join_url"))
-    print("Password          :", details.get("password"))
-    print("Host ID           :", details.get("host_id"))
-    print("PSTN Password     :", details.get("pstn_password"))
-    print("Encrypted Password:", details.get("encrypted_password"))
-
-    print("\nAudio Settings")
-    print("----------------")
-    print(details.get("settings", {}).get("audio"))
-
-    # Dial-in details
-    print("\nDial-In Numbers")
-    print("----------------")
-
-    for dial in details.get("settings", {}).get("global_dial_in_numbers", []):
-        print(
-            f"{dial.get('country_name')} | "
-            f"{dial.get('city')} | "
-            f"{dial.get('number')} | "
-            f"{dial.get('type')}"
-        )
-
-    return details
+    print(json.dumps(data, indent=4))
 
 
-# ==========================
-# Main
-# ==========================
+# =====================================
+# INVITATION (CONTAINS DIAL-IN NUMBERS)
+# =====================================
+
+def get_invitation(token, meeting_id):
+    print("\n===== INVITATION =====")
+
+    url = f"https://api.zoom.us/v2/meetings/{meeting_id}/invitation"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    print("Status:", response.status_code)
+
+    if response.status_code != 200:
+        print(response.text)
+        return
+
+    data = response.json()
+
+    print(data.get("invitation"))
+
+
+# =====================================
+# MAIN
+# =====================================
+
 if __name__ == "__main__":
 
     token = get_access_token()
 
-    print("Access Token Generated Successfully")
+    if not token:
+        exit()
 
-    meeting_id = create_meeting(token)
+    print("Access Token Generated")
 
-    get_meetings(token)
+    # Show all users in account
+    get_users(token)
+
+    # Verify host email
+    user = get_user_by_email(token, HOST_EMAIL)
+
+    if not user:
+        print(
+            "\nThe email is not found in your Zoom account.\n"
+            "Copy the email from get_users() output."
+        )
+        exit()
+
+    USER_ID = user["id"]
+
+    print("\nUsing User ID:", USER_ID)
+
+    meeting_id = create_meeting(token, USER_ID)
+
+    if not meeting_id:
+        exit()
+
+    get_meetings(token, USER_ID)
 
     get_meeting_details(token, meeting_id)
+
+    get_invitation(token, meeting_id)
