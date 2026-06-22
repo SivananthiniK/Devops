@@ -1,0 +1,175 @@
+import requests
+import json
+from datetime import datetime, timedelta
+
+# ==========================
+# Zoom Credentials
+# ==========================
+ACCOUNT_ID = "YOUR_ACCOUNT_ID"
+CLIENT_ID = "YOUR_CLIENT_ID"
+CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+
+# Meeting host email
+ZOOM_USER_EMAIL = "host@example.com"
+
+# ==========================
+# Get Access Token
+# ==========================
+def get_access_token():
+    url = "https://zoom.us/oauth/token"
+
+    response = requests.post(
+        url,
+        params={
+            "grant_type": "account_credentials",
+            "account_id": ACCOUNT_ID
+        },
+        auth=(CLIENT_ID, CLIENT_SECRET)
+    )
+
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+# ==========================
+# Create Meeting
+# ==========================
+def create_meeting(token):
+    url = f"https://api.zoom.us/v2/users/{ZOOM_USER_EMAIL}/meetings"
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    start_time = (
+        datetime.utcnow() + timedelta(hours=1)
+    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    payload = {
+        "topic": "API Created Meeting",
+        "type": 2,
+        "start_time": start_time,
+        "duration": 60,
+        "timezone": "UTC",
+        "agenda": "Meeting created using Zoom API",
+        "settings": {
+            "host_video": True,
+            "participant_video": True,
+            "join_before_host": False,
+            "waiting_room": True,
+            "audio": "both",
+            "auto_recording": "none"
+        }
+    }
+
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload
+    )
+
+    response.raise_for_status()
+
+    meeting = response.json()
+
+    print("\n========== CREATED MEETING ==========")
+    print(json.dumps(meeting, indent=4))
+
+    return meeting["id"]
+
+
+# ==========================
+# Get All Meetings
+# ==========================
+def get_meetings(token):
+    url = f"https://api.zoom.us/v2/users/{ZOOM_USER_EMAIL}/meetings"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    response.raise_for_status()
+
+    meetings = response.json()
+
+    print("\n========== ALL MEETINGS ==========")
+
+    for meeting in meetings.get("meetings", []):
+        print("-" * 60)
+        print("Meeting ID :", meeting.get("id"))
+        print("Topic      :", meeting.get("topic"))
+        print("Type       :", meeting.get("type"))
+        print("Start Time :", meeting.get("start_time"))
+        print("Timezone   :", meeting.get("timezone"))
+        print("Join URL   :", meeting.get("join_url"))
+
+    return meetings.get("meetings", [])
+
+
+# ==========================
+# Get Meeting Details
+# ==========================
+def get_meeting_details(token, meeting_id):
+    url = f"https://api.zoom.us/v2/meetings/{meeting_id}"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    response.raise_for_status()
+
+    details = response.json()
+
+    print("\n========== MEETING DETAILS ==========")
+
+    print("Meeting ID        :", details.get("id"))
+    print("Topic             :", details.get("topic"))
+    print("Agenda            :", details.get("agenda"))
+    print("Status            :", details.get("status"))
+    print("Start Time        :", details.get("start_time"))
+    print("Duration          :", details.get("duration"))
+    print("Timezone          :", details.get("timezone"))
+    print("Join URL          :", details.get("join_url"))
+    print("Password          :", details.get("password"))
+    print("Host ID           :", details.get("host_id"))
+    print("PSTN Password     :", details.get("pstn_password"))
+    print("Encrypted Password:", details.get("encrypted_password"))
+
+    print("\nAudio Settings")
+    print("----------------")
+    print(details.get("settings", {}).get("audio"))
+
+    # Dial-in details
+    print("\nDial-In Numbers")
+    print("----------------")
+
+    for dial in details.get("settings", {}).get("global_dial_in_numbers", []):
+        print(
+            f"{dial.get('country_name')} | "
+            f"{dial.get('city')} | "
+            f"{dial.get('number')} | "
+            f"{dial.get('type')}"
+        )
+
+    return details
+
+
+# ==========================
+# Main
+# ==========================
+if __name__ == "__main__":
+
+    token = get_access_token()
+
+    print("Access Token Generated Successfully")
+
+    meeting_id = create_meeting(token)
+
+    get_meetings(token)
+
+    get_meeting_details(token, meeting_id)
