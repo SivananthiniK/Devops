@@ -1,0 +1,415 @@
+# Rewrite the Playwright Enrollment Test
+
+The current Playwright test is failing the simple Playwright validation. Do **not** try to patch the existing implementation.
+
+## Mandatory Instructions
+
+1. **Delete the existing Windows Phone enrollment Playwright test completely.**
+2. **Rewrite the test from scratch.**
+3. **Use Playwright best practices only.**
+4. **Do NOT use Auto mode generated code. Write deterministic Playwright code.**
+5. **Create reusable helper functions wherever possible.**
+6. **Avoid hardcoded waits (`waitForTimeout`) unless absolutely necessary.**
+7. Use:
+
+   * `expect().toBeVisible()`
+   * `expect().toContainText()`
+   * `locator()`
+   * `getByRole()`
+   * `getByLabel()`
+   * `getByText()`
+   * `waitForLoadState('networkidle')`
+   * `expect(page).toHaveURL()`
+8. Test timeout must be **2 minutes**.
+
+```ts
+test.setTimeout(120000);
+```
+
+9. Every navigation must wait until the page is fully loaded.
+10. Every dialog should be verified before interacting.
+11. Every success message must be asserted.
+12. Every external help link should be verified and then navigate back.
+13. Do not skip any validation.
+14. The final test should pass Playwright's simple validation without lint or syntax errors.
+
+---
+
+# Test Flow
+
+At the beginning of the test, detect the page heading.
+
+Possible headings:
+
+* **Authenticated Enrollment**
+* **Open Enrollment**
+
+Branch accordingly.
+
+---
+
+# CASE 1 : Heading = Authenticated Enrollment
+
+## Switch to Open Enrollment
+
+Click **Switch to Open Enrollment**
+
+Select **Open Enrollment** radio.
+
+Click **Learn More**
+
+Verify URL
+
+https://www.hexnode.com/mobile-device-management/help/enroll-android-mobile-devices-hexnode-mdm/#
+
+Go back.
+
+Default User
+
+Search:
+
+etoe_test
+
+If user exists:
+
+Select it.
+
+Else:
+
+Click **Add New User**
+
+Display Name
+
+etoe_test
+
+Email
+
+[etoe_test@example.com](mailto:etoe_test@example.com)
+
+Click Create.
+
+Default Password
+
+tryhard1!
+
+Click Next.
+
+Verify
+
+Enrollment settings successfully updated
+
+Verify heading becomes
+
+Open Enrollment.
+
+Click
+
+Hexnode MDM
+
+Verify URL
+
+https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#no-auth
+
+Go back.
+
+Default Email
+
+Click Change
+
+Dialog opens.
+
+Select first user.
+
+Done.
+
+Verify success message.
+
+Verify selected email displayed.
+
+Password
+
+Click Change.
+
+Password
+
+Tryhard01!
+
+Done.
+
+Verify success.
+
+Click eye icon.
+
+Verify password visible.
+
+Send Mail
+
+Verify
+
+Enrollment request successfully created
+
+Send SMS
+
+Phone
+
+123456789
+
+Send
+
+Verify success.
+
+Assignment Message
+
+Click Change.
+
+Domain
+
+Select second value.
+
+User
+
+Select first value.
+
+Verify assignment message updates.
+
+---
+
+## Switch back to Authenticated Enrollment
+
+Click
+
+Switch to Authenticated Enrollment
+
+Select
+
+Authenticated Enrollment
+
+Learn More
+
+Verify URL
+
+https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#email-or-sms-enrollment
+
+Go back.
+
+Enrollment Request
+
+Toggle every checkbox ON and OFF.
+
+Finally leave checked
+
+* Local User
+* Google User
+
+Self Enrollment
+
+Toggle every checkbox.
+
+Finally leave checked
+
+* Local User
+* Google User
+
+Ownership
+
+Toggle every radio.
+
+Finally choose
+
+Personal
+
+Next
+
+Verify
+
+Enrollment settings successfully updated
+
+Verify heading becomes
+
+Authenticated Enrollment
+
+---
+
+Email Enrollment
+
+Select Email.
+
+Search
+
+etoe_test
+
+If missing
+
+Create
+
+Display Name
+
+etoe_test
+
+Email
+
+[etoe_test@example.com](mailto:etoe_test@example.com)
+
+Send.
+
+Verify success.
+
+---
+
+SMS Enrollment
+
+Select SMS.
+
+Search
+
+etoe_test
+
+If missing
+
+Create user.
+
+Phone
+
+123456789
+
+Send.
+
+Verify success.
+
+---
+
+SMS Settings
+
+Open
+
+Change SMS settings
+
+Click
+
+Test SMS
+
+Phone
+
+123456789
+
+Message
+
+etoe test
+
+Send.
+
+Verify
+
+Please provide a valid number.
+
+Replace phone with placeholder value already shown.
+
+Send again.
+
+Verify
+
+Please enter valid account details
+
+Store every SMS configuration value.
+
+Click Reset.
+
+Confirm Yes.
+
+Verify
+
+SMS account removed successfully
+
+Click Configure.
+
+Restore saved values.
+
+Save.
+
+Verify
+
+SMS account saved successfully
+
+Verify Change SMS settings text appears.
+
+---
+
+Email Server
+
+Click Configure.
+
+Server Name
+
+etoe test
+
+Port
+
+1111
+
+Sender
+
+[etoe_test@example.com](mailto:etoe_test@example.com)
+
+Enable
+
+TLS
+
+SSL
+
+Authentication
+
+Username
+
+etoe_test
+
+Password
+
+etoetest
+
+Test Email
+
+To
+
+[etoe_test_to@example.com](mailto:etoe_test_to@example.com)
+
+Send
+
+Verify
+
+mail sending failed. please check your port number,authentication
+
+Cancel.
+
+Save.
+
+Verify text changes to
+
+Configure a new email server
+
+Click it.
+
+Verify dialog.
+
+Change Password.
+
+Re-enter
+
+etoetest
+
+Save.
+
+Dialog closes.
+
+---
+
+# CASE 2 : Heading = Open Enrollment
+
+Execute the entire Authenticated Enrollment flow above first.
+
+After it completes and page becomes Authenticated Enrollment,
+
+repeat the Open Enrollment flow exactly as described earlier.
+
+The rewritten test must support both starting states and always complete the entire flow successfully.
+
+Do not generate partial implementations. Produce one complete Playwright test with helper functions, proper assertions, reusable locators, and a total timeout of 2 minutes.
