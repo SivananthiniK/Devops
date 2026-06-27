@@ -1,265 +1,285 @@
-import requests
-import json
-from datetime import datetime, timedelta
 
-# =====================================
-# ZOOM CONFIGURATION
-# =====================================
+Check for the heading whether it shows Authenticated Enrollment or Open Enrolment
+1.If Authenticated Enrollment :
 
-ACCOUNT_ID = "YOUR_ACCOUNT_ID"
-CLIENT_ID = "YOUR_CLIENT_ID"
-CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+click the link Switch to Open Enrollment
 
-# Leave blank initially
-HOST_EMAIL = "YOUR_ZOOM_EMAIL"
+If youswitch to  open enrollment: After clicking,
+Click the radio of open enrollment
+Click learn more link under it : it navigates to https://www.hexnode.com/mobile-device-management/help/enroll-android-mobile-devices-hexnode-mdm/#
 
-# =====================================
-# ACCESS TOKEN
-# =====================================
+In the default user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
-def get_access_token():
-    url = "https://zoom.us/oauth/token"
+Click create. 
 
-    response = requests.post(
-        url,
-        params={
-            "grant_type": "account_credentials",
-            "account_id": ACCOUNT_ID
-        },
-        auth=(CLIENT_ID, CLIENT_SECRET)
-    )
+In Default password  - enter tryhard1!
 
-    if response.status_code != 200:
-        print("Token Error:")
-        print(response.text)
-        return None
+Click next 
+“Enrollment settings successfully updated” message appears
 
-    return response.json()["access_token"]
+Then it will change to open enrolment
 
+Click Hexnode MDM  link. It navigates to https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#no-auth
 
-# =====================================
-# GET USERS
-# =====================================
+In the Default email - click change
+a dialog opens
+In Change user :  click and select the first value.
+click done
+Enrollment settings successfully updated message will come and Default email - your selected email will be visible
 
-def get_users(token):
-    print("\n===== USERS =====")
+In the password - click change
+In the New password field: enter Tryhard01!
+click done
+Enrollment settings successfully updated message appears and the password will be masked. click the eye icon and check whether the updated password is visible
 
-    url = "https://api.zoom.us/v2/users?page_size=300"
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
 
-    response = requests.get(url, headers=headers)
+Click send mail - “Enrollment request successfully created” message appears
+Click send sms - a dialog opens and asks for phone number. Give 123456789
+Click send - “Enrollment request successfully created” message appears
 
-    print("Status:", response.status_code)
+There will be a message like : Note: All the devices will be assigned to the user etoe_test change.
+Click change.
+Click domain and select second value
+Change user and select first value
+Now the message will be changed to Note: All the devices will be assigned to the user <selected user’s name> change
 
-    if response.status_code != 200:
-        print(response.text)
-        return None
 
-    data = response.json()
+Then in the page with heading shows Open Enrollment :
 
-    for user in data.get("users", []):
-        print("-" * 50)
-        print("ID    :", user.get("id"))
-        print("Email :", user.get("email"))
-        print("Name  :", user.get("first_name"), user.get("last_name"))
+click the link switch to authenticated enrollment
+Check the radio for  Authenticated Enrollment
+Click learn more link under it : it navigates to https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#email-or-sms-enrollment
 
-    return data
+Under Enrollment Request:
+Toggle and toggle back all the checkboxes and finally 
+Check Local User and Google user
+Under Self Enrollment:
+Toggle and toggle back all the checkboxes and finally 
+Check Local User and Google user
 
+Under Ownership:
+Toggle and toggle back all the radio button and finally choose personal
 
-# =====================================
-# GET USER BY EMAIL
-# =====================================
+Click next 
+“Enrollment settings successfully updated” message appears
+Then it will change to Authenticated enrolment
 
-def get_user_by_email(token, email):
-    url = f"https://api.zoom.us/v2/users/{email}"
+In the Send enrollment request via : check email
+In user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
+Click create. 
 
-    response = requests.get(url, headers=headers)
+Click send
 
-    print("\nUser Lookup Status:", response.status_code)
+“Enrollment request successfully created” message comes
 
-    if response.status_code != 200:
-        print(response.text)
-        return None
 
-    return response.json()
+In the Send enrollment request via : check sms
+In user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
+Click create. 
 
-# =====================================
-# CREATE MEETING
-# =====================================
+Enter Phone no : 123456789
 
-def create_meeting(token, user_id):
-    print("\n===== CREATING MEETING =====")
+Click send
 
-    url = f"https://api.zoom.us/v2/users/{user_id}/meetings"
+“Enrollment request successfully created” message comes
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
 
-    start_time = (
-        datetime.utcnow() + timedelta(hours=1)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+In the page there is a message like: Change the SMS settings here - click here link. It opens SMS Settings dialog
+Click test sms
+In the to - enter 123456789
 
-    payload = {
-        "topic": "Test Meeting API",
-        "type": 2,
-        "start_time": start_time,
-        "duration": 60,
-        "timezone": "UTC",
-        "agenda": "Created via API",
-        "settings": {
-            "host_video": True,
-            "participant_video": True,
-            "join_before_host": False,
-            "waiting_room": True,
-            "audio": "both"
-        }
-    }
+In message: etoe test
+Click send. Error message “Please provide a valid number.” Appears
+Enter placeholder value itself
+Click send. It shows “Please enter valid account details”
+Note down all the values.
+Click reset 
+Confirmation dialog with message “Configured SMS will be Removed” comes. 
+Click yes
+“SMS account removed successfully” message appears
+You haven't configured an SMS server. Click here to configure one now. - click - click here
+Enter the saved details and click save
+“SMS account saved successfully” appears
 
-    response = requests.post(
-        url,
-        headers=headers,
-        json=payload
-    )
+The text Change the SMS settings here appears again
 
-    print("Status:", response.status_code)
+We use the default email server to send emails to the users. You can configure your own server from here - Click here
 
-    if response.status_code not in [200, 201]:
-        print(response.text)
-        return None
+Server name:etoe test
+Port : 1111
+Sender email : etoe_test@example.com
+Check:
+Enable TLS
 
-    data = response.json()
+Enable SSL
 
-    print(json.dumps(data, indent=4))
+Enable Authentication - username : etoe_test
+Password: etoetest
 
-    return data["id"]
+Click test email
 
+Enter to email as etoe_test_to@example.com
+Click send 
+“mail sending failed. please check your port number,authentication” appears
 
-# =====================================
-# LIST MEETINGS
-# =====================================
+Click cancel
+Click save
+The message will change to Click here to configure a new email server.
 
-def get_meetings(token, user_id):
-    print("\n===== USER MEETINGS =====")
+Click - click here
+ Dialog with “Email Server Configuration” appears.
+Click change password. Enter the same password again
+Click save
 
-    url = f"https://api.zoom.us/v2/users/{user_id}/meetings"
+The dialog closes
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
+2.If Open Enrollment :
 
-    response = requests.get(url, headers=headers)
+click the link switch to Authenticated Enrollment :
 
-    print("Status:", response.status_code)
+Check the radio for  Authenticated Enrollment
+Click learn more link under it : it navigates to https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#email-or-sms-enrollment
 
-    if response.status_code != 200:
-        print("ERROR:")
-        print(response.text)
-        return
+Under Enrollment Request:
+Toggle and toggle back all the checkboxes and finally 
+Check Local User and Google user
+Under Self Enrollment:
+Toggle and toggle back all the checkboxes and finally 
+Check Local User and Google user
 
-    data = response.json()
+Under Ownership:
+Toggle and toggle back all the radio button and finally choose personal
 
-    print(json.dumps(data, indent=4))
+Click next 
+“Enrollment settings successfully updated” message appears
+Then it will change to Authenticated enrolment
 
+In the Send enrollment request via : check email
+In user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
-# =====================================
-# MEETING DETAILS
-# =====================================
+Click create. 
 
-def get_meeting_details(token, meeting_id):
-    print("\n===== MEETING DETAILS =====")
+Click send
 
-    url = f"https://api.zoom.us/v2/meetings/{meeting_id}"
+“Enrollment request successfully created” message comes
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
 
-    response = requests.get(url, headers=headers)
+In the Send enrollment request via : check sms
+In user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
-    print("Status:", response.status_code)
+Click create. 
 
-    if response.status_code != 200:
-        print(response.text)
-        return
+Enter Phone no : 123456789
 
-    data = response.json()
+Click send
 
-    print(json.dumps(data, indent=4))
+“Enrollment request successfully created” message comes
 
 
-# =====================================
-# INVITATION (CONTAINS DIAL-IN NUMBERS)
-# =====================================
+In the page there is a message like: Change the SMS settings here - click here link. It opens SMS Settings dialog
+Click test sms
+In the to - enter 123456789
 
-def get_invitation(token, meeting_id):
-    print("\n===== INVITATION =====")
+In message: etoe test
+Click send. Error message “Please provide a valid number.” Appears
+Enter placeholder value itself
+Click send. It shows “Please enter valid account details”
+Note down all the values.
+Click reset 
+Confirmation dialog with message “Configured SMS will be Removed” comes. 
+Click yes
+“SMS account removed successfully” message appears
+You haven't configured an SMS server. Click here to configure one now. - click - click here
+Enter the saved details and click save
+“SMS account saved successfully” appears
 
-    url = f"https://api.zoom.us/v2/meetings/{meeting_id}/invitation"
+The text Change the SMS settings here appears again
 
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
+We use the default email server to send emails to the users. You can configure your own server from here - Click here
 
-    response = requests.get(url, headers=headers)
+Server name:etoe test
+Port : 1111
+Sender email : etoe_test@example.com
+Check:
+Enable TLS
 
-    print("Status:", response.status_code)
+Enable SSL
 
-    if response.status_code != 200:
-        print(response.text)
-        return
+Enable Authentication - username : etoe_test
+Password: etoetest
 
-    data = response.json()
+Click test email
 
-    print(data.get("invitation"))
+Enter to email as etoe_test_to@example.com
+Click send 
+“mail sending failed. please check your port number,authentication” appears
 
+Click cancel
+Click save
+The message will change to Click here to configure a new email server.
 
-# =====================================
-# MAIN
-# =====================================
+Click - click here
+ Dialog with “Email Server Configuration” appears.
+Click change password. Enter the same password again
+Click save
 
-if __name__ == "__main__":
+The dialog closes
 
-    token = get_access_token()
 
-    if not token:
-        exit()
 
-    print("Access Token Generated")
+Then in the page with heading shows Open Enrollment :click the link Switch to Open Enrollment
 
-    # Show all users in account
-    get_users(token)
+If youswitch to  open enrollment: After clicking,
+Click the radio of open enrollment
+Click learn more link under it : it navigates to https://www.hexnode.com/mobile-device-management/help/enroll-android-mobile-devices-hexnode-mdm/#
 
-    # Verify host email
-    user = get_user_by_email(token, HOST_EMAIL)
+In the default user dropdown, search etoe_test. If there, select it. If not there, add button will be there. Click add new user:
+Display name : etoe_test
+Email: etoe_test@example.com
 
-    if not user:
-        print(
-            "\nThe email is not found in your Zoom account.\n"
-            "Copy the email from get_users() output."
-        )
-        exit()
+Click create. 
 
-    USER_ID = user["id"]
+In Default password  - enter tryhard1!
 
-    print("\nUsing User ID:", USER_ID)
+Click next 
+“Enrollment settings successfully updated” message appears
 
-    meeting_id = create_meeting(token, USER_ID)
+Then it will change to open enrolment
 
-    if not meeting_id:
-        exit()
+Click Hexnode MDM  link. It navigates to https://www.hexnode.com/mobile-device-management/help/enroll-windows-mobile-devices-hexnode-mdm/#no-auth
 
-    get_meetings(token, USER_ID)
+In the Default email - click change
+a dialog opens
+In Change user :  click and select the first value.
+click done
+Enrollment settings successfully updated message will come and Default email - your selected email will be visible
 
-    get_meeting_details(token, meeting_id)
+In the password - click change
+In the New password field: enter Tryhard01!
+click done
+Enrollment settings successfully updated message appears and the password will be masked. click the eye icon and check whether the updated password is visible
 
-    get_invitation(token, meeting_id)
+
+
+Click send mail - “Enrollment request successfully created” message appears
+Click send sms - a dialog opens and asks for phone number. Give 123456789
+Click send - “Enrollment request successfully created” message appears
+
+There will be a message like : Note: All the devices will be assigned to the user etoe_test change.
+Click change.
+Click domain and select second value
+Change user and select first value
+Now the message will be changed to Note: All the devices will be assigned to the user <selected user’s name> change
